@@ -197,9 +197,9 @@ struct block{
         }
         SDL_SetTextureBlendMode(tyu,SDL_BLENDMODE_BLEND);
         SDL_SetRenderTarget(renderer,nullptr);
-        if(blu!=nullptr){
-            auto it=find(tex.rbegin(),tex.rend(),blu);SDL_DestroyTexture(*it);tex.erase(next(it).base());
-        }
+//        if(blu!=nullptr){
+//            auto it=find(tex.rbegin(),tex.rend(),blu);SDL_DestroyTexture(*it);tex.erase(next(it).base());
+//        }
         blu=tyu;
     }
 };
