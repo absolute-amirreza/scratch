@@ -15,7 +15,7 @@ SDL_Color click(SDL_Renderer*renderer,const block& p,int x,int y){
     SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(
             0, p.r.w, p.r.h, 32, SDL_PIXELFORMAT_RGBA32
     );
-    SDL_SetRenderTarget(renderer, p.blu);
+    SDL_SetRenderTarget(renderer,p.blu);
     SDL_RenderReadPixels(renderer, nullptr, surface->format->format,surface->pixels, surface->pitch);
     SDL_SetRenderTarget(renderer, nullptr);
     UINT32*pixels=(UINT32*)surface->pixels;
