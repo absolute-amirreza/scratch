@@ -6,7 +6,7 @@ struct p{
     bool b;int j;
 };
 struct o{
-    bool b;vector<block*>j;int g;int right=0;block*rib;int i1,i2;int ss;
+    bool b{};vector<block*>j;int g{};int right=0;block*rib{};int i1{},i2{};int ss{};
 };
 int xr,yr,wr,hr;
 vector<block*>bbl;
@@ -24,11 +24,16 @@ SDL_Color click(SDL_Renderer*renderer,const block& p,int x,int y){
     SDL_FreeSurface(surface);
     return color;
 }
-block*copt(const block& co){
-    block*pp=new block;
-    *pp=co;
-    bbl.push_back(pp);
-    return pp;
+block* copyb(SDL_Renderer*renderer,const block& cv){
+    block*d=new block(cv);
+    d->blu=SDL_CreateTexture(renderer,SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,cv.r.w,cv.r.h);
+    SDL_SetRenderTarget(renderer,d->blu);
+    SDL_SetRenderDrawColor(renderer,255,255,255,0);
+    SDL_RenderClear(renderer);SDL_Rect r={0,0,cv.r.w,cv.r.h};
+    SDL_RenderCopy(renderer,cv.blu, nullptr,&r);
+    SDL_SetTextureBlendMode(d->blu,SDL_BLENDMODE_BLEND);
+    SDL_SetRenderTarget(renderer, nullptr);
+    return d;
 }
 int wide(const vector<block*>&a){
     int r=0;

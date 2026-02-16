@@ -19,7 +19,7 @@ int main(int argc,char*argv[]){
         exc[i].blocks=bclist(i);exb[i].blocks=bblist(i);
         exc[i].color();exb[i].color();
         for(int j=0;j<exc[i].blocks.size();j++){
-           exc[i].blocks[j].draw(renderer);
+           exc[i].blocks[j].draw(renderer);//tex.push_back(exc[i].blocks[j].blu);
            if(j>0)exc[i].blocks[j].r.y=exc[i].blocks[j-1].r.y+exc[i].blocks[j-1].r.h+10;
            else{
                exc[i].blocks[0].r.y=5;if(i==7)exc[i].blocks[0].r.y+=36;
@@ -27,7 +27,7 @@ int main(int argc,char*argv[]){
             exc[i].blocks[j].r.x=5+exc[i].blocks[j].b*17;
         }
         for(int j=0;j<exb[i].blocks.size();j++){
-            exb[i].blocks[j].draw(renderer);
+            exb[i].blocks[j].draw(renderer);//tex.push_back(exb[i].blocks[j].blu);
             if(j>0)exb[i].blocks[j].r.y=exb[i].blocks[j-1].r.y+exb[i].blocks[j-1].r.h+10;
             else{
                 exb[i].blocks[0].r.y=5;if(i==7)exb[i].blocks[0].r.y+=36;
@@ -111,7 +111,7 @@ int main(int argc,char*argv[]){
                     else{
                         for(const auto& i:exc[m].blocks){
                             if(e.button.x-56>i.r.x&&e.button.x-56<i.r.x+i.r.w&&e.button.y-80>i.r.y&&e.button.y-80<i.r.y+i.r.h&&click(renderer,i,e.button.x-56,e.button.y-80).a>1){
-                                vector<block*>xc;xc.push_back(copt(i));current=xc;
+                                current={copyb(renderer,i)};
                                 drag=true;xz=e.button.x;yz=e.button.y;current[0]->r.x=i.r.x+56;
                                 SDL_SetRenderTarget(renderer,backsave);
                                 SDL_RenderCopy(renderer,working->texture, nullptr, nullptr);
@@ -221,6 +221,7 @@ int main(int argc,char*argv[]){
         SDL_DestroyTexture(i);
     }
     for(auto i:bbl){
+        SDL_DestroyTexture(i->blu);
         delete i;
     }
     TTF_Quit();
