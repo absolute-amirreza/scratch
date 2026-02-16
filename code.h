@@ -88,11 +88,11 @@ struct block{
         }
     }
     void draw(SDL_Renderer*renderer){
-        rec();SDL_Texture*tyu=SDL_CreateTexture(renderer,SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,r.w,r.h);
-        tex.push_back(tyu);
+        rec();if(blu)SDL_DestroyTexture(blu);
+        blu=SDL_CreateTexture(renderer,SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,r.w,r.h);
         UINT32 z=color;UINT8 rrr=z%256;z/=256;UINT8 gg=z%256;z/=256;UINT8 bb=z%256;z/=256;UINT8 aa=z;
         SDL_Color colo = {rrr, gg, bb, aa};
-        SDL_SetRenderTarget(renderer,tyu);SDL_SetRenderDrawColor(renderer,255,255,255,0);SDL_RenderClear(renderer);
+        SDL_SetRenderTarget(renderer,blu);SDL_SetRenderDrawColor(renderer,255,255,255,0);SDL_RenderClear(renderer);
         if(sit==1){
             filledTrigonColor(renderer,0,13,13,0,13,26,color);
             filledTrigonColor(renderer,r.w-13,0,r.w-13,26,r.w,13,color);
@@ -195,11 +195,8 @@ struct block{
                 SDL_RenderCopy(renderer,uni[i], nullptr,&rr);
             }
         }
-        SDL_SetTextureBlendMode(tyu,SDL_BLENDMODE_BLEND);
-//        if(blu!=nullptr){
-//            auto it=find(tex.rbegin(),tex.rend(),blu);SDL_DestroyTexture(*it);tex.erase(next(it).base());
-//        }
-        blu=tyu;SDL_SetRenderTarget(renderer,nullptr);
+        SDL_SetTextureBlendMode(blu,SDL_BLENDMODE_BLEND);
+        SDL_SetRenderTarget(renderer,nullptr);
     }
 };
 struct exten{
