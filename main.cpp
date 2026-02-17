@@ -1,11 +1,7 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
 #include "code1.h"
 #include "settings.h"
 #include "costum.h"
 #include "run.h"
-#include <iostream>
 
 int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
@@ -23,11 +19,11 @@ int main(int argc, char* argv[]) {
     
     TTF_Font* regular = TTF_OpenFont("assets/fonts/AkzidenzGrotesk-Regular.otf", 16);
     TTF_Font* bold = TTF_OpenFont("assets/fonts/AkzidenzGrotesk-Bold.otf", 18);
-    
-    SDL_Texture* topmain = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, wt, ht);
-    tex.push_back(topmain);
-    
-    drawmm(renderer, true, topmain);
+
+    SDL_Texture* run = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 400);
+    tex.push_back(run);SDL_Rect ruc={wt-500,80,500,400};
+
+    drawmm(renderer, true);
     msx(renderer, 0, true);
     SDL_RenderPresent(renderer);
     unic(renderer);
@@ -72,8 +68,7 @@ int main(int argc, char* argv[]) {
         exc[i].draw(renderer, i);
         exb[i].draw(renderer, i);
     }
-    
-    vector<codtxs> spco[2];
+
     codtxs start{};
     spco[0].push_back(start);
     spco[0][0].create(renderer, exc[0]);
@@ -95,10 +90,9 @@ int main(int argc, char* argv[]) {
     SDL_Rect bn = {149, 5, 120, 72};
     string cva;
     int ivar;
-    bool change = false;
+    bool change_c = false,change_e = false;
     int i7;
     bool dellv = false;
-    SDL_SetRenderTarget(renderer, working->texture);
     block* typeb = nullptr;
     bool ty = false;
     int ts;
@@ -111,12 +105,13 @@ int main(int argc, char* argv[]) {
         else if(e.type == SDL_MOUSEBUTTONDOWN) {
             if(e.button.button == SDL_BUTTON_LEFT) {
                 if(m == 7 && myval) {
+                    SDL_SetRenderTarget(renderer, working->texture);
                     if(!(e.button.y > 85 && e.button.y < 157 && e.button.x > 149 && e.button.x < 269)) {
                         myval = false;
                         SDL_RenderCopy(renderer, backsave, nullptr, nullptr);
                         SDL_StartTextInput();
                         cva = "";
-                        change = true;
+                        change_c = true;
                     }
                     else if(e.button.y > 133 && e.button.y < 157 && e.button.x > 245 && e.button.x < 269) {
                         bool k = true;
@@ -149,13 +144,14 @@ int main(int argc, char* argv[]) {
                             SDL_SetRenderTarget(renderer, working->texture);
                             exc[7].copy(renderer);
                             cva = "";
-                            change = true;
+                            change_c = true;
                         }
                     }
                 }
                 else if(m == 7 && dellv) {
-                    change = true;
+                    change_c = true;
                     dellv = false;
+                    SDL_SetRenderTarget(renderer, working->texture);
                     SDL_RenderCopy(renderer, backsave, nullptr, nullptr);
                     if(e.button.y > exc[7].blocks[i7].r.y + 93 && e.button.x > 110 && e.button.x < 149 && e.button.y < exc[7].blocks[i7].r.y + 119) {
                         exc[7].blocks.erase(exc[7].blocks.begin() + i7);
@@ -172,15 +168,17 @@ int main(int argc, char* argv[]) {
                     }
                 }
                 else if(ty) {
+                    SDL_SetRenderTarget(renderer, working->texture);
                     ty = false;
                     SDL_StopTextInput();
                     SDL_RenderCopy(renderer, typeb->blu, nullptr, &typeb->r);
-                    change = true;
+                    change_c = true;
                 }
                 else if(e.button.x < 56 && e.button.y < 530 && e.button.y > 80) {
                     int n = (e.button.y - 80) / 50;
-                    change = true;
                     if(m != n) {
+                        SDL_SetRenderTarget(renderer, working->texture);
+                        change_c = true;
                         drawexx(renderer, n, m);
                         m = n;
                         exc[n].copy(renderer);
@@ -192,6 +190,7 @@ int main(int argc, char* argv[]) {
                     }
                 }
                 else if(e.button.x > 56 && e.button.x < 306 && e.button.y > 80) {
+                    SDL_SetRenderTarget(renderer, working->texture);
                     if(m == 7 && !myval && e.button.y > 85 && e.button.x > 61 && e.button.x < 149 && e.button.y < 111) {
                         myval = true;
                         SDL_SetRenderTarget(renderer, backsave);
@@ -199,7 +198,7 @@ int main(int argc, char* argv[]) {
                         SDL_SetRenderTarget(renderer, working->texture);
                         SDL_RenderCopy(renderer, creva, nullptr, &bn);
                         SDL_StartTextInput();
-                        change = true;
+                        change_c = true;
                     }
                     else {
                         for(const auto& i : exc[m].blocks) {
@@ -212,11 +211,11 @@ int main(int argc, char* argv[]) {
                                 SDL_SetRenderTarget(renderer, backsave);
                                 SDL_RenderCopy(renderer, working->texture, nullptr, nullptr);
                                 SDL_SetRenderTarget(renderer, working->texture);
-                                change = true;
+                                change_c = true;
                             }
                             else if(m < 8 && m != 6 && m != 4 && m != 3 && i.b && e.button.x > 61 && e.button.x < 73 && e.button.y > i.r.y + 87 && e.button.y < i.r.y + 99) {
                                 auto it = find(working->bol[m].begin(), working->bol[m].end(), i.pn[0]);
-                                change = true;
+                                change_c = true;
                                 if(it == working->bol[m].end()) {
                                     bcl(renderer, 61, i.r.y + 7, 73, i.r.y + 19, 0xffff0000);
                                     working->bol[m].push_back(i.pn[0]);
@@ -231,6 +230,7 @@ int main(int argc, char* argv[]) {
                     }
                 }
                 else if(e.button.x > 306 && e.button.x < wt - 500 && e.button.y > 80) {
+                    SDL_SetRenderTarget(renderer, working->texture);
                     o ss = working->get(renderer, e.button.x, e.button.y - 80, working->texture);
                     SDL_SetRenderTarget(renderer, working->texture);
                     if(ss.b) {
@@ -241,7 +241,7 @@ int main(int argc, char* argv[]) {
                         SDL_SetRenderTarget(renderer, backsave);
                         SDL_RenderCopy(renderer, working->texture, nullptr, nullptr);
                         SDL_SetRenderTarget(renderer, working->texture);
-                        change = true;
+                        change_c= true;
                         for(block* i : current) {
                             i->r.x += e.motion.x - xz;
                             i->r.y += e.motion.y - yz;
@@ -252,20 +252,22 @@ int main(int argc, char* argv[]) {
                         ty = true;
                         typeb = ss.rib;
                         SDL_StartTextInput();
-                        change = true;
+                        change_c = true;
                         ts = ss.ss;
                         bcl(renderer, typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y, typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
                     }
                 }
-                else if(e.button.y > 50 && e.button.x < 216 && e.button.y < 80) {
-                    SDL_SetRenderTarget(renderer, nullptr);
-                    msx(renderer, e.button.x, true);
-                    SDL_SetRenderTarget(renderer, start.texture);
-                    change = true;
+                else if(e.button.y > 50 && e.button.y < 80) {
+                    if(e.button.x<216){
+                        SDL_SetRenderTarget(renderer, nullptr);
+                        msx(renderer, e.button.x, true);
+                    }
+                    else if(cligri(e.button.x,e.button.y))1;
                 }
             }
             else if(e.button.button == SDL_BUTTON_RIGHT) {
                 if(m == 7 && !dellv) {
+                    SDL_SetRenderTarget(renderer, working->texture);
                     for(int i = 5; i < exc[7].blocks.size(); i++) {
                         if(e.button.x - 56 > exc[7].blocks[i].r.x && e.button.x - 56 < exc[7].blocks[i].r.x + exc[7].blocks[i].r.w && e.button.y - 80 > exc[7].blocks[i].r.y && e.button.y - 80 < exc[7].blocks[i].r.y + exc[7].blocks[i].r.h && click(renderer, exc[7].blocks[i], e.button.x - 56, e.button.y - 80).a > 1) {
                             SDL_SetRenderTarget(renderer, backsave);
@@ -275,7 +277,7 @@ int main(int argc, char* argv[]) {
                             i7 = i;
                             bcl(renderer, 110, exc[7].blocks[i].r.y + 13, 149, exc[7].blocks[i].r.y + 39, 0xffa0a0ff);
                             textRGBA(renderer, 113, exc[7].blocks[i].r.y + 18, "Delete", "tahoma.ttf", 12, 0, 0, 0, 255);
-                            change = true;
+                            change_c = true;
                         }
                     }
                 }
@@ -283,24 +285,27 @@ int main(int argc, char* argv[]) {
         }
         else if(e.type == SDL_TEXTINPUT) {
             if(myval) {
+                SDL_SetRenderTarget(renderer, working->texture);
                 cva += e.text.text;
                 bcl(renderer, 156, 30, 262, 52, 0xffffffff);
                 textRGBA(renderer, 158, 33, cva.c_str(), "tahoma.ttf", 12, 0, 0, 0, 255);
                 int ter = convert(cva, 12);
                 bcl(renderer, 161 + ter, 31, 164 + ter, 51, 0xff000000);
-                change = true;
+                change_c = true;
             }
             else if(ty) {
+                SDL_SetRenderTarget(renderer, working->texture);
                 typeb->v[ts] += e.text.text;
                 typeb->draw(renderer);
                 SDL_SetRenderTarget(renderer, working->texture);
                 SDL_RenderCopy(renderer, typeb->blu, nullptr, &typeb->r);
-                change = true;
+                change_c = true;
                 bcl(renderer, typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y, typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
             }
         }
         else if(e.type == SDL_KEYDOWN) {
             if(myval) {
+                SDL_SetRenderTarget(renderer, working->texture);
                 if(e.key.keysym.sym == SDLK_BACKSPACE && !cva.empty()) {
                     cva.pop_back();
                     bcl(renderer, 156, 30, 262, 52, 0xffffffff);
@@ -308,16 +313,17 @@ int main(int argc, char* argv[]) {
                         textRGBA(renderer, 158, 33, cva.c_str(), "tahoma.ttf", 12, 0, 0, 0, 255);
                     int ter = convert(cva, 12);
                     bcl(renderer, 161 + ter, 31, 164 + ter, 51, 0xff000000);
-                    change = true;
+                    change_c = true;
                 }
             }
             else if(ty) {
                 if(e.key.keysym.sym == SDLK_BACKSPACE && !typeb->v[ts].empty()) {
+                    SDL_SetRenderTarget(renderer, working->texture);
                     bcl(renderer, typeb->r.x + 50, typeb->r.y, typeb->r.x + typeb->r.w, typeb->r.y + typeb->r.h, 0xffffffff);
                     typeb->v[ts].pop_back();
                     typeb->draw(renderer);
                     SDL_SetRenderTarget(renderer, working->texture);
-                    change = true;
+                    change_c = true;
                     SDL_RenderCopy(renderer, typeb->blu, nullptr, &typeb->r);
                     bcl(renderer, typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y, typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
                 }
@@ -325,13 +331,15 @@ int main(int argc, char* argv[]) {
         }
         else if(e.type == SDL_MOUSEBUTTONUP) {
             if(drag) {
+                SDL_SetRenderTarget(renderer, working->texture);
                 working->add(renderer, backsave, current, working->texture);
                 drag = false;
-                change = true;
+                change_c = true;
             }
         }
         else if(e.type == SDL_MOUSEMOTION) {
             if(drag) {
+                SDL_SetRenderTarget(renderer, working->texture);
                 SDL_RenderCopy(renderer, backsave, nullptr, nullptr);
                 for(block* i : current) {
                     tekan(i, e.motion.x - xz, e.motion.y - yz);
@@ -339,18 +347,25 @@ int main(int argc, char* argv[]) {
                 }
                 xz = e.motion.x;
                 yz = e.motion.y;
-                change = true;
+                change_c = true;
             }
         }
-        
-        if(change) {
-            change = false;
+        if(execute(renderer)){
+            change_e=true;
+            SDL_SetRenderTarget(renderer,run);
+        }
+        if(change_c) {
+            change_c = false;
             SDL_SetRenderTarget(renderer, nullptr);
             working->copy(renderer);
             SDL_RenderPresent(renderer);
-            SDL_SetRenderTarget(renderer, working->texture);
         }
-        
+        else if(change_e) {
+            change_e = false;
+            SDL_SetRenderTarget(renderer, nullptr);
+            SDL_RenderCopy(renderer,run, nullptr,&ruc);
+            SDL_RenderPresent(renderer);
+        }
         e.type = 0;
     }
     

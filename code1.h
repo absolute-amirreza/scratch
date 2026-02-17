@@ -29,8 +29,8 @@ block* copyb(SDL_Renderer*renderer,const block& cv){
     d->blu=SDL_CreateTexture(renderer,SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,cv.r.w,cv.r.h);
     SDL_SetRenderTarget(renderer,d->blu);
     SDL_SetRenderDrawColor(renderer,255,255,255,0);
-    SDL_RenderClear(renderer);SDL_Rect r={0,0,cv.r.w,cv.r.h};
-    SDL_RenderCopy(renderer,cv.blu, nullptr,&r);
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer,cv.blu, nullptr, nullptr);
     SDL_SetTextureBlendMode(d->blu,SDL_BLENDMODE_BLEND);
     SDL_SetRenderTarget(renderer, nullptr);
     return d;
@@ -54,6 +54,10 @@ struct codtxs{
         SDL_Rect r={0,80,wt-500,ht-80};SDL_RenderCopy(renderer,texture, nullptr,&r);
     }
     vector<vector<block*>>data;
+    vector<int>exen;vector<bool>exeb;
+    void fill(){
+        for(auto i:data){exen.push_back(0);exeb.push_back(false);}
+    }
     p shart(SDL_Renderer*renderer, vector<block*> px,vector<block*>bp){
         if(bp[0]->u&&bp[bp.size()-1]->d){
             for(int i=0;i<px.size();i++){
@@ -306,5 +310,6 @@ void tekan(block*&u,int x,int y){
     }
     u->r.x+=x;u->r.y+=y;
 }
+vector<codtxs> spco[2];
 
 #endif //SCRATCH_CODE1_H

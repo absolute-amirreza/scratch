@@ -42,6 +42,7 @@ struct block{
     vector<string>m[2];
     UINT32 c[2]{};//51,52
     bool var[3]{};int x1v[3]{},x2v[3]{},xco[2]{};
+    bool conex;double variex;
 
     SDL_Texture*blu=nullptr;
     UINT32 color{};
@@ -435,7 +436,7 @@ vector<block> bclist(int i){
     }
     else if(i==3){
         block a1;c(a1);a1.sit=0;a1.u=false;a1.d=true;
-        a1.pn[0]="when clicked";
+        a1.pn[0]="when run clicked";
         a1.order={70};
         p.push_back(a1);
         block a2;c(a2);a2.sit=0;a2.u=false;a2.d=true;
