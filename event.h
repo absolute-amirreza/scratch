@@ -31,15 +31,14 @@ void bcl(SDL_Renderer *renderer,int x1,int y1,int x2,int y2,UINT32 color){
     SDL_SetRenderDrawBlendMode(renderer,SDL_BLENDMODE_NONE);
     SDL_RenderFillRect(renderer,&r);
 }
-void drawmm(SDL_Renderer*renderer,bool cb,SDL_Texture*texture){
-    SDL_SetRenderTarget(renderer,texture);
+void drawmm(SDL_Renderer*renderer,bool cb){
     SDL_SetRenderDrawColor(renderer,148,187,235,255);
     SDL_RenderClear(renderer);
     bcl(renderer,0,0,wt,40,0xffff780a);
     textRGBA(renderer,0,7,"SCRATCH","tahomabd.ttf",22,0,0,0,255);
     textRGBA(renderer,130,10,"File    ?","tahomabd.ttf",18,0,0,0,255);
-    SDL_SetRenderTarget(renderer, nullptr);
-    SDL_RenderCopy(renderer,texture, nullptr, nullptr);
+    bcl(renderer,wt-495,45,wt-465,75,0xff00ff00);
+    bcl(renderer,wt-460,45,wt-430,75,0xff0000ff);
 }
 int msx(SDL_Renderer*renderer,int x,bool cb){
     int x1=0,x2=53;
