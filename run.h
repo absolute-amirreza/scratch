@@ -3,9 +3,9 @@
 #define SCRATCH_RUN_H
 #include "code1.h"
 #include "settings.h"
-vector<Sprite>sp;vector<Background>co;
+vector<Character>sp;vector<BackgroundState>co;
 struct dxd{
-    int i{};Sprite sp;Background co;
+    int i{};Character sp;BackgroundState co;
 };
 void exebl(SDL_Renderer*renderer,int &i,const block*px,dxd& sb){i++;}
 bool execute(SDL_Renderer*renderer){

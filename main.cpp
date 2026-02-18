@@ -14,11 +14,15 @@ int main(int argc, char* argv[]) {
     ht = dm.h - 70;
     
     SDL_Window* window = SDL_CreateWindow("project", 0, 20, wt, ht, SDL_WINDOW_SHOWN);
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC|SDL_RENDERER_TARGETTEXTURE);
     SDL_RaiseWindow(window);
     
     TTF_Font* regular = TTF_OpenFont("assets/fonts/AkzidenzGrotesk-Regular.otf", 16);
     TTF_Font* bold = TTF_OpenFont("assets/fonts/AkzidenzGrotesk-Bold.otf", 18);
+
+    //SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
+    TTF_Font* font = TTF_OpenFont("assets/fonts/AkzidenzGrotesk-Regular.otf", 14);
 
     SDL_Texture* run = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 400);
     tex.push_back(run);SDL_Rect ruc={wt-500,80,500,400};
@@ -94,7 +98,7 @@ int main(int argc, char* argv[]) {
     int i7;
     bool dellv = false;
     block* typeb = nullptr;
-    bool ty = false;
+    bool ty = false,mo=false;
     int ts;
     
     while(true) {
@@ -104,7 +108,24 @@ int main(int argc, char* argv[]) {
             break;
         else if(e.type == SDL_MOUSEBUTTONDOWN) {
             if(e.button.button == SDL_BUTTON_LEFT) {
-                if(m == 7 && myval) {
+                if(mo){
+                    SDL_SetRenderTarget(renderer,working->texture);
+                    SDL_RenderCopy(renderer,backsave, nullptr, nullptr);
+                    change_c=true;
+                    mo = false;
+                    if(e.button.x>300&&e.button.x<500&&e.button.y>80&&e.button.y<480){
+                        int i=2*((e.button.y-80)/18)+(e.button.x-300)/100;
+                        if(i<typeb->m[ts].size()){
+                            SDL_Rect cnc={typeb->r.x+50,typeb->r.y,typeb->r.w-50,26};
+                            SDL_SetRenderDrawColor(renderer,255,255,255,255);
+                            SDL_RenderFillRect(renderer,&cnc);
+                            typeb->mod[ts]=typeb->m[ts][i];typeb->draw(renderer);
+                            SDL_SetRenderTarget(renderer,working->texture);
+                            SDL_RenderCopy(renderer,typeb->blu, nullptr,&typeb->r);
+                        }
+                    }
+                }
+                else if(m == 7 && myval) {
                     SDL_SetRenderTarget(renderer, working->texture);
                     if(!(e.button.y > 85 && e.button.y < 157 && e.button.x > 149 && e.button.x < 269)) {
                         myval = false;
@@ -256,6 +277,19 @@ int main(int argc, char* argv[]) {
                         ts = ss.ss;
                         bcl(renderer, typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y, typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
                     }
+                    else if(ss.right ==2) {
+                        mo = true;
+                        typeb = ss.rib;
+                        change_c = true;
+                        ts = ss.ss;
+                        SDL_SetRenderTarget(renderer,backsave);
+                        SDL_RenderCopy(renderer,working->texture, nullptr, nullptr);
+                        SDL_SetRenderTarget(renderer,working->texture);
+                        bcl(renderer,300,0,500,400,typeb->color);
+                        for(int i=0;i<typeb->m[ts].size();i++){
+                            textRGBA(renderer,i%2==0?300:400,2+(i/2)*18,typeb->m[ts][i].c_str(),"tahoma.ttf",12,0,0,0,255);
+                        }
+                    }
                 }
                 else if(e.button.y > 50 && e.button.y < 80) {
                     if(e.button.x<216){
@@ -378,7 +412,7 @@ int main(int argc, char* argv[]) {
     }
     
     if(regular) TTF_CloseFont(regular);
-    if(bold) TTF_CloseFont(bold);
+    if(bold) TTF_CloseFont(bold);if(font) TTF_CloseFont(font);
     
     TTF_Quit();
     SDL_DestroyWindow(window);

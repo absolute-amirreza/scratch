@@ -56,7 +56,7 @@ struct codtxs{
     vector<vector<block*>>data;
     vector<int>exen;vector<bool>exeb;
     void fill(){
-        for(auto i:data){exen.push_back(0);exeb.push_back(false);}
+        for(int i=0;i<data.size();i++){exen.push_back(0);exeb.push_back(false);}
     }
     p shart(SDL_Renderer*renderer, vector<block*> px,vector<block*>bp){
         if(bp[0]->u&&bp[bp.size()-1]->d){
@@ -238,14 +238,17 @@ struct codtxs{
             if(i/10==9&&x>px->r.x+px->x1v[i%10]&&x<px->r.x+px->x2v[i%10]&&y>px->r.y&&y<px->r.y+26&&click(renderer,*px,x,y).r>250){
                 o hg;hg.b=false;hg.right=1;hg.ss=i%10;hg.rib=px;return hg;
             }
-            else if(i/10==3&&x>px->candy[i%10]->r.x&&x<px->candy[i%10]->r.x+px->candy[i%10]->r.w&&y>px->candy[i%10]->r.y&&y<px->candy[i%10]->r.y+px->candy[i%10]->r.h&&click(renderer,*px->candy[i%10],x,y).a>1){
+            if(i/10==2&&x>px->r.x+px->xm[i%10]&&x<px->r.x+px->xm[i%10]+convert(px->mod[i%10],12)+17&&y>px->r.y+4&&y<px->r.y+22){
+                o hg;hg.b=false;hg.right=2;hg.ss=i%10;hg.rib=px;return hg;
+            }
+            if(i/10==3&&x>px->candy[i%10]->r.x&&x<px->candy[i%10]->r.x+px->candy[i%10]->r.w&&y>px->candy[i%10]->r.y&&y<px->candy[i%10]->r.y+px->candy[i%10]->r.h&&click(renderer,*px->candy[i%10],x,y).a>1){
                 o daf=getko(renderer,x,y,px->candy[i%10]);
-                if(daf.b){wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->draw(renderer);return daf;}else if(daf.right==1)return daf;
+                if(daf.b){wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->draw(renderer);return daf;}if(daf.right>0)return daf;
                 i+=10;wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->draw(renderer);return{true,{px->candy[i%10]}};
             }
-            else if(i/10==8&&x>px->vari[i%10]->r.x&&x<px->vari[i%10]->r.x+px->vari[i%10]->r.w&&y>px->vari[i%10]->r.y&&y<px->vari[i%10]->r.y+px->vari[i%10]->r.h&&click(renderer,*px->vari[i%10],x,y).a>1){
+            if(i/10==8&&x>px->vari[i%10]->r.x&&x<px->vari[i%10]->r.x+px->vari[i%10]->r.w&&y>px->vari[i%10]->r.y&&y<px->vari[i%10]->r.y+px->vari[i%10]->r.h&&click(renderer,*px->vari[i%10],x,y).a>1){
                 o daf=getko(renderer,x,y,px->vari[i%10]);
-                if(daf.b){wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->draw(renderer);return daf;}else if(daf.right==1)return daf;
+                if(daf.b){wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->draw(renderer);return daf;}if(daf.right>0)return daf;
                 i+=10;wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->v[i%10]="";px->draw(renderer);return{true,{px->vari[i%10]}};
             }
         }
@@ -257,14 +260,16 @@ struct codtxs{
             if(px[i]->hofre[0]){
                 o f=getsh(renderer,x,y,px[i]->hof[0]);
                 if(f.b){px[i]->draw(renderer);wr=wr1;hr=hr1;yr=yr1;xr=xr1;return f;}
+                if(f.right>0){f.i2=i;return f;}
                 if(px[i]->hofre[1]){
                     o f1=getsh(renderer,x,y,px[i]->hof[1]);
                     if(f1.b){px[i]->draw(renderer);wr=wr1;hr=hr1;yr=yr1;xr=xr1;return f1;}
+                    if(f.right>0){f.i2=i;return f;}
                 }
             }
             if(x>px[i]->r.x&&x<px[i]->r.x+px[i]->r.w&&y>px[i]->r.y&&y<px[i]->r.y+px[i]->r.h&&click(renderer,*px[i],x,y).a>1){
                 o daf=getko(renderer,x,y,px[i]);
-                if(daf.b){px[i]->draw(renderer);wr=wr1;hr=hr1;yr=yr1;xr=xr1;return daf;}else if(daf.right==1){daf.i2=i;return daf;}
+                if(daf.b){px[i]->draw(renderer);wr=wr1;hr=hr1;yr=yr1;xr=xr1;return daf;}if(daf.right>0){daf.i2=i;return daf;}
                 vector<block*>ans(px.begin()+i,px.end());yr=yr1;xr=xr1;hr=px.back()->r.y+px.back()->r.h-px[i]->r.y;wr=wr1;
                 for(int j=i+1;j<px.size();j++){if(wr<px[j]->r.w)wr=px[j]->r.w;}px.erase(px.begin()+i,px.end());
                 return{true,ans,i};
@@ -292,7 +297,7 @@ struct codtxs{
                 }
                 return g;
             }
-            else if(g.right==1){g.i1=i;return g;}
+            else if(g.right>0){g.i1=i;return g;}
         }
         o jk;jk.b=false;return jk;
     }
