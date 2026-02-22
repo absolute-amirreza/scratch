@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
                            "assets/backgrounds/abandoned_class.png", "Abandoned Class",
                            "assets/backgrounds/black_forest.png", "Black Forest");
 
-    bool running = true, mouseDown = false, mouseJustPressed = false, mouseClicked = false;
+    bool mouseDown = false, mouseJustPressed = false, mouseClicked = false;
     int mouseX = 0, mouseY = 0, dragIndex = -1;
     bool requestAddChar = false, requestRename = false;
     std::string renameBuffer;
@@ -156,6 +156,10 @@ int main(int argc, char* argv[]) {
             break;
         else if(e.type == SDL_MOUSEBUTTONDOWN) {
             if(e.button.button == SDL_BUTTON_LEFT) {
+                mouseDown = true;
+                mouseJustPressed = true;
+                mouseX = e.button.x;
+                mouseY = e.button.y;
                 if(mo){
                     SDL_SetRenderTarget(renderer,working->texture);
                     SDL_RenderCopy(renderer,backsave, nullptr, nullptr);
@@ -410,8 +414,21 @@ int main(int argc, char* argv[]) {
                     bcl(typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y, typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
                 }
             }
+            if (e.key.keysym.sym == SDLK_ESCAPE) {
+                bgMenu.showingLibrary = false;
+                bgMenu.showingEditor = false;
+                charBar.panelOpen = false;
+                if (imgEditor.active) {
+                    imgEditor.confirmed = false;
+                    imgEditor.active = false;
+                }
+            }
         }
         else if(e.type == SDL_MOUSEBUTTONUP) {
+            mouseClicked = mouseDown;
+            mouseDown = false;
+            mouseX = e.button.x;
+            mouseY = e.button.y;
             if(drag) {
                 SDL_SetRenderTarget(renderer, working->texture);
                 working->add( backsave, current, working->texture);
@@ -420,6 +437,8 @@ int main(int argc, char* argv[]) {
             }
         }
         else if(e.type == SDL_MOUSEMOTION) {
+            mouseX = e.motion.x;
+            mouseY = e.motion.y;
             if(drag) {
                 SDL_SetRenderTarget(renderer, working->texture);
                 SDL_RenderCopy(renderer, backsave, nullptr, nullptr);
@@ -448,6 +467,84 @@ int main(int argc, char* argv[]) {
             SDL_RenderCopy(renderer,run, nullptr,&ruc);
             SDL_RenderPresent(renderer);
         }
+
+        if (imgEditor.active) handleImageEditorMouse(renderer, &imgEditor, &e, EDITOR_CANVAS_RECT);
+        if (!imgEditor.active) {
+            if (mouseX >= STAGE_X && mouseX < STAGE_X + STAGE_W && mouseY >= STAGE_Y && mouseY < STAGE_Y + STAGE_H) {
+                handleCharacterDrag(&charMgr, mouseX, mouseY, mouseDown, mouseJustPressed, &dragIndex);
+            }
+        }
+        if (mouseClicked && !imgEditor.active) {
+            int bgAction = handleBackgroundBarClick(&bgMenu, BG_BAR_RECT, mouseX, mouseY);
+            if (bgAction == 2) {
+                loadBackgroundFromSystem(renderer, &bgState, WINDOW_W, WINDOW_H);
+                bgMenu.menuOpen = false;
+            }
+            if (bgAction == 3) {
+                initImageEditor(renderer, &imgEditor, EDITOR_CANVAS_W, EDITOR_CANVAS_H);
+                bgMenu.menuOpen = false;
+            }
+
+            handleCharacterBarClick(&charBar, CHAR_BAR_RECT, mouseX, mouseY);
+        }
+        if (requestAddChar) {
+            requestAddChar = false;
+            int choice = MessageBoxA(nullptr,
+                                     "Choose how to add a character:\n\nYES  = Load from system (file dialog)\nNO   = Add an orange square",
+                                     "Add Character", MB_YESNOCANCEL | MB_ICONQUESTION);
+            if (choice == IDYES) {
+                int idx = addCharacterFromSystem(renderer, &charMgr);
+                if (idx >= 0) {
+                    setActiveCharacter(&charMgr, idx);
+                    Character& c = charMgr.characters[idx];
+                    c.x = STAGE_X + (STAGE_W - c.width)  / 2;
+                    c.y = STAGE_Y + (STAGE_H - c.height) / 2;
+                }
+            }
+            else if (choice == IDNO) {
+                int idx = addOrangeSquareCharacter(renderer, &charMgr);
+                if (idx >= 0) {
+                    setActiveCharacter(&charMgr, idx);
+                    Character& c = charMgr.characters[idx];
+                    c.x = STAGE_X + (STAGE_W - c.width)  / 2;
+                    c.y = STAGE_Y + (STAGE_H - c.height) / 2;
+                }
+            }
+        }
+        if (requestRename && charMgr.activeIndex >= 0) {
+            requestRename = false;
+            if (simpleTextInputDialog(renderer, font, "Enter new name:", renameBuffer)) {
+                renameCharacter(&charMgr, charMgr.activeIndex, renameBuffer);
+            }
+        }
+        if (!imgEditor.active && imgEditor.confirmed) {
+            applyEditorCanvasAsBackground(renderer, &bgState, &imgEditor, WINDOW_W, WINDOW_H);
+        }
+        if (charBar.panelOpen) {
+            int popX = CHAR_BAR_RECT.x - 200;
+            int popY = CHAR_BAR_RECT.y;
+            renderCharacterBarPanel(renderer, font, &charMgr, popX, popY, mouseX, mouseY, mouseClicked);
+        }
+        if (bgMenu.showingLibrary) {
+            int libX = BG_BAR_RECT.x - 369, libY = BG_BAR_RECT.y + 10 + 32 + 32;
+            int sel = renderDefaultBackgroundLibrary(renderer, font, &bgState, libX, libY, mouseX, mouseY, mouseClicked, WINDOW_W, WINDOW_H);
+            if (sel >= 0) {
+                bgMenu.showingLibrary = false;
+                bgMenu.menuOpen = false;
+            }
+        }
+        if (imgEditor.active) {
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
+            SDL_Rect full = {0, 0, WINDOW_W, WINDOW_H};
+            SDL_RenderFillRect(renderer, &full);
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+
+            renderImageEditor(renderer, font, &imgEditor, EDITOR_CANVAS_RECT, mouseX, mouseY, mouseClicked);
+        }
+
+        mouseClicked = false;
+        mouseJustPressed = false;
         e.type = 0;
     }
     
