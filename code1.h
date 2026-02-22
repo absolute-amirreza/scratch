@@ -10,7 +10,7 @@ struct o{
 };
 int xr,yr,wr,hr;
 vector<block*>bbl;
-SDL_Color click(SDL_Renderer*renderer,const block& p,int x,int y){
+SDL_Color click(const block& p,int x,int y){
     SDL_Color color = {0, 0, 0, 0};
     SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(
             0, p.r.w, p.r.h, 32, SDL_PIXELFORMAT_RGBA32
@@ -24,7 +24,7 @@ SDL_Color click(SDL_Renderer*renderer,const block& p,int x,int y){
     SDL_FreeSurface(surface);
     return color;
 }
-block* copyb(SDL_Renderer*renderer,const block& cv){
+block* copyb(const block& cv){
     block*d=new block(cv);
     d->blu=SDL_CreateTexture(renderer,SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,cv.r.w,cv.r.h);
     SDL_SetRenderTarget(renderer,d->blu);
@@ -45,12 +45,12 @@ int wide(const vector<block*>&a){
 struct codtxs{
     SDL_Texture *texture;
     vector<string> bol[8];
-    void create(SDL_Renderer*renderer,const exten& i){
+    void create(const exten& i){
         texture=SDL_CreateTexture(renderer,SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,wt-500,ht-80);
         tex.push_back(texture);SDL_SetRenderTarget(renderer,texture);SDL_SetRenderDrawColor(renderer,255,255,255,255);
-        SDL_RenderClear(renderer);drawex(renderer);i.copy(renderer);SDL_SetRenderTarget(renderer, nullptr);
+        SDL_RenderClear(renderer);drawex();i.copy();SDL_SetRenderTarget(renderer, nullptr);
     }
-    void copy(SDL_Renderer*renderer) const{
+    void copy() const{
         SDL_Rect r={0,80,wt-500,ht-80};SDL_RenderCopy(renderer,texture, nullptr,&r);
     }
     vector<vector<block*>>data;
@@ -58,46 +58,46 @@ struct codtxs{
     void fill(){
         for(int i=0;i<data.size();i++){exen.push_back(0);exeb.push_back(false);}
     }
-    p shart(SDL_Renderer*renderer, vector<block*> px,vector<block*>bp){
+    p shart(vector<block*> px,vector<block*>bp){
         if(bp[0]->u&&bp[bp.size()-1]->d){
             for(int i=0;i<px.size();i++){
                 if(fabs(bp[0]->r.x-px[i]->r.x)<25&&px[i]->hofre[0]&&px[i]->r.y+px[i]->h[0]+32-bp[0]->r.y>0&&bp[0]->r.y-px[i]->r.y>6){
                     if(px[i]->hof[0].empty()){
                         px[i]->hof[0]=bp;
-                        px[i]->draw(renderer);return{true,i};
+                        px[i]->draw();return{true,i};
                     }
                     for(int j=0;j<px[i]->hof[0].size();j++){
                         if(fabs(bp[0]->r.y-px[i]->hof[0][j]->r.y+7)<13){
                             px[i]->hof[0].insert(px[i]->hof[0].begin()+j,bp.begin(),bp.end());
-                            px[i]->draw(renderer);return{true,i};
+                            px[i]->draw();return{true,i};
                         }
                         if(fabs(bp[0]->r.y-(px[i]->h[0]+26+px[i]->r.y)+7)<13){
                             px[i]->hof[0].insert(px[i]->hof[0].begin()+j+1,bp.begin(),bp.end());
-                            px[i]->draw(renderer);return{true,i};
+                            px[i]->draw();return{true,i};
                         }
                     }
-                    p u=shart(renderer,px[i]->hof[0],bp);
+                    p u=shart(px[i]->hof[0],bp);
                     if(u.b){
-                        px[i]->draw(renderer);return{true,i};
+                        px[i]->draw();return{true,i};
                     }
                 }
                 if(fabs(bp[0]->r.x-px[i]->r.x)<25&&px[i]->hofre[1]&&px[i]->r.y+px[i]->r.h-bp[0]->r.y>26&&bp[0]->r.y-px[i]->r.y-px[i]->h[0]>32){
                     if(px[i]->hof[1].empty()){
                         px[i]->hof[1]=bp;
-                        px[i]->draw(renderer);return{true,i};
+                        px[i]->draw();return{true,i};
                     }
                     for(int j=0;j<px[i]->hof[1].size();j++){
                         if(fabs(bp[0]->r.y-px[i]->hof[1][j]->r.y+7)<13){
                             px[i]->hof[1].insert(px[i]->hof[1].begin()+j,bp.begin(),bp.end());
-                            px[i]->draw(renderer);return{true,i};
+                            px[i]->draw();return{true,i};
                         }
                         if(fabs(bp[0]->r.y-(px[i]->r.h+px[i]->r.y-32)+7)<13){
                             px[i]->hof[1].insert(px[i]->hof[1].begin()+j+1,bp.begin(),bp.end());
-                            px[i]->draw(renderer);return{true,i};
+                            px[i]->draw();return{true,i};
                         }
                     }
-                    p u=shart(renderer,px[i]->hof[1],bp);
-                    px[i]->draw(renderer);if(u.b)return{true,i};
+                    p u=shart(px[i]->hof[1],bp);
+                    px[i]->draw();if(u.b)return{true,i};
                 }
             }
         }
@@ -106,47 +106,47 @@ struct codtxs{
     static bool recpo(SDL_Rect rv,const block*pp){
         return  (pp->r.x>rv.x&&pp->r.x<rv.x+rv.w&&pp->r.y>rv.y&&pp->r.y<rv.y+rv.h);
     }
-    static bool sit12(SDL_Renderer*renderer,block*px,block*bp){
+    static bool sit12(block*px,block*bp){
         if(recpo(px->r,bp)){
             for(int i=0;i<px->order.size();i++){
                 if(px->order[i]/10==3&&recpo(px->candy[px->order[i]%10]->r,bp)){
-                    bool vb=sit12(renderer,px->candy[px->order[i]%10],bp);
+                    bool vb=sit12(px->candy[px->order[i]%10],bp);
                     if(vb){
-                        px->draw(renderer);return true;
+                        px->draw();return true;
                     }
-                    if(bp->sit==1)px->candy[px->order[i]%10]=bp;px->draw(renderer);return true;
+                    if(bp->sit==1)px->candy[px->order[i]%10]=bp;px->draw();return true;
                 }
                 if(px->order[i]/10==8&&recpo(px->vari[px->order[i]%10]->r,bp)){
-                    bool vb=sit12(renderer,px->vari[px->order[i]%10],bp);
+                    bool vb=sit12(px->vari[px->order[i]%10],bp);
                     if(vb){
-                        px->draw(renderer);return true;
+                        px->draw();return true;
                     }
-                    if(bp->sit==2)px->vari[px->order[i]%10]=bp;px->draw(renderer);return true;
+                    if(bp->sit==2)px->vari[px->order[i]%10]=bp;px->draw();return true;
                 }
                 if(px->order[i]/10==4&&bp->sit==1&&fabs(bp->r.x-px->r.x-px->xco[px->order[i]%10]-13)<13&&bp->r.y-px->r.y<26){
-                    px->order[i]-=10;px->candy[px->order[i]%10]=bp;px->draw(renderer);return true;
+                    px->order[i]-=10;px->candy[px->order[i]%10]=bp;px->draw();return true;
                 }
                 if(px->order[i]/10==9&&bp->sit==2&&bp->r.x>px->r.x+px->x1v[px->order[i]%10]&&bp->r.x<px->r.x+px->x2v[px->order[i]%10]&&bp->r.y-px->r.y<26){
-                    px->order[i]-=10;px->vari[px->order[i]%10]=bp;px->draw(renderer);return true;
+                    px->order[i]-=10;px->vari[px->order[i]%10]=bp;px->draw();return true;
                 }
             }
         }
         return false;
     }
-    p dr12(SDL_Renderer*renderer,vector<block*>px,block*bp){
+    p dr12(vector<block*>px,block*bp){
         for(int i=0;i<px.size();i++){
             int wx=px[i]->r.w;
-            if(sit12(renderer,px[i],bp)){wr=wx;return{true,i};}
+            if(sit12(px[i],bp)){wr=wx;return{true,i};}
             if(px[i]->hofre[0]){
-                if(dr12(renderer,px[i]->hof[0],bp).b){wr=wx;px[i]->draw(renderer);return{true,i};}
+                if(dr12(px[i]->hof[0],bp).b){wr=wx;px[i]->draw();return{true,i};}
             }
             if(px[i]->hofre[1]){
-                if(dr12(renderer,px[i]->hof[1],bp).b){wr=wx;px[i]->draw(renderer);return{true,i};}
+                if(dr12(px[i]->hof[1],bp).b){wr=wx;px[i]->draw();return{true,i};}
             }
         }
         return{false,0};
     }
-    void add(SDL_Renderer*renderer,SDL_Texture*tes,vector<block*>bbc,SDL_Texture*yu){
+    void add(SDL_Texture*tes,vector<block*>bbc,SDL_Texture*yu){
         int ww=wide(bbc),hh=bbc[bbc.size()-1]->r.y+bbc[bbc.size()-1]->r.h-bbc[0]->r.y;
         if(bbc[0]->r.x+ww/2<306){
             SDL_RenderCopy(renderer,tes, nullptr, nullptr);
@@ -180,7 +180,7 @@ struct codtxs{
                         }
                     }
                     if(z){
-                        p u=shart(renderer,data[i],bbc);
+                        p u=shart(data[i],bbc);
                         if(u.b){
                             z=false;SDL_SetRenderTarget(renderer,yu);SDL_RenderCopy(renderer,tes, nullptr, nullptr);
                             for(int j=u.j;j<data[i].size();j++){
@@ -193,7 +193,7 @@ struct codtxs{
                     }
                 }
                 if(bbc[0]->sit>0&&z){
-                    p g=dr12(renderer,data[i],bbc[0]);
+                    p g=dr12(data[i],bbc[0]);
                     if(g.b){
                         z=false;
                         SDL_SetRenderTarget(renderer,yu);SDL_RenderCopy(renderer,tes, nullptr, nullptr);
@@ -233,43 +233,43 @@ struct codtxs{
             }
         }
     }
-    static o getko(SDL_Renderer*renderer,int x,int y,block*&px){
+    static o getko(int x,int y,block*&px){
         for(int &i:px->order){
-            if(i/10==9&&x>px->r.x+px->x1v[i%10]&&x<px->r.x+px->x2v[i%10]&&y>px->r.y&&y<px->r.y+26&&click(renderer,*px,x,y).r>250){
+            if(i/10==9&&x>px->r.x+px->x1v[i%10]&&x<px->r.x+px->x2v[i%10]&&y>px->r.y&&y<px->r.y+26&&click(*px,x,y).r>250){
                 o hg;hg.b=false;hg.right=1;hg.ss=i%10;hg.rib=px;return hg;
             }
             if(i/10==2&&x>px->r.x+px->xm[i%10]&&x<px->r.x+px->xm[i%10]+convert(px->mod[i%10],12)+17&&y>px->r.y+4&&y<px->r.y+22){
                 o hg;hg.b=false;hg.right=2;hg.ss=i%10;hg.rib=px;return hg;
             }
-            if(i/10==3&&x>px->candy[i%10]->r.x&&x<px->candy[i%10]->r.x+px->candy[i%10]->r.w&&y>px->candy[i%10]->r.y&&y<px->candy[i%10]->r.y+px->candy[i%10]->r.h&&click(renderer,*px->candy[i%10],x,y).a>1){
-                o daf=getko(renderer,x,y,px->candy[i%10]);
-                if(daf.b){wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->draw(renderer);return daf;}if(daf.right>0)return daf;
-                i+=10;wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->draw(renderer);return{true,{px->candy[i%10]}};
+            if(i/10==3&&x>px->candy[i%10]->r.x&&x<px->candy[i%10]->r.x+px->candy[i%10]->r.w&&y>px->candy[i%10]->r.y&&y<px->candy[i%10]->r.y+px->candy[i%10]->r.h&&click(*px->candy[i%10],x,y).a>1){
+                o daf=getko(x,y,px->candy[i%10]);
+                if(daf.b){wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->draw();return daf;}if(daf.right>0)return daf;
+                i+=10;wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->draw();return{true,{px->candy[i%10]}};
             }
-            if(i/10==8&&x>px->vari[i%10]->r.x&&x<px->vari[i%10]->r.x+px->vari[i%10]->r.w&&y>px->vari[i%10]->r.y&&y<px->vari[i%10]->r.y+px->vari[i%10]->r.h&&click(renderer,*px->vari[i%10],x,y).a>1){
-                o daf=getko(renderer,x,y,px->vari[i%10]);
-                if(daf.b){wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->draw(renderer);return daf;}if(daf.right>0)return daf;
-                i+=10;wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->v[i%10]="";px->draw(renderer);return{true,{px->vari[i%10]}};
+            if(i/10==8&&x>px->vari[i%10]->r.x&&x<px->vari[i%10]->r.x+px->vari[i%10]->r.w&&y>px->vari[i%10]->r.y&&y<px->vari[i%10]->r.y+px->vari[i%10]->r.h&&click(*px->vari[i%10],x,y).a>1){
+                o daf=getko(x,y,px->vari[i%10]);
+                if(daf.b){wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->draw();return daf;}if(daf.right>0)return daf;
+                i+=10;wr=px->r.w,hr=px->r.h,xr=px->r.x,yr=px->r.y;px->v[i%10]="";px->draw();return{true,{px->vari[i%10]}};
             }
         }
         o jk;jk.b=false;return jk;
     }
-    o getsh(SDL_Renderer*renderer,int x,int y,vector<block*>&px){
+    o getsh(int x,int y,vector<block*>&px){
         for(int i=0;i<px.size();i++){
             int wr1=px[i]->r.w,hr1=px[i]->r.h,xr1=px[i]->r.x,yr1=px[i]->r.y;
             if(px[i]->hofre[0]){
-                o f=getsh(renderer,x,y,px[i]->hof[0]);
-                if(f.b){px[i]->draw(renderer);wr=wr1;hr=hr1;yr=yr1;xr=xr1;return f;}
+                o f=getsh(x,y,px[i]->hof[0]);
+                if(f.b){px[i]->draw();wr=wr1;hr=hr1;yr=yr1;xr=xr1;return f;}
                 if(f.right>0){f.i2=i;return f;}
                 if(px[i]->hofre[1]){
-                    o f1=getsh(renderer,x,y,px[i]->hof[1]);
-                    if(f1.b){px[i]->draw(renderer);wr=wr1;hr=hr1;yr=yr1;xr=xr1;return f1;}
+                    o f1=getsh(x,y,px[i]->hof[1]);
+                    if(f1.b){px[i]->draw();wr=wr1;hr=hr1;yr=yr1;xr=xr1;return f1;}
                     if(f.right>0){f.i2=i;return f;}
                 }
             }
-            if(x>px[i]->r.x&&x<px[i]->r.x+px[i]->r.w&&y>px[i]->r.y&&y<px[i]->r.y+px[i]->r.h&&click(renderer,*px[i],x,y).a>1){
-                o daf=getko(renderer,x,y,px[i]);
-                if(daf.b){px[i]->draw(renderer);wr=wr1;hr=hr1;yr=yr1;xr=xr1;return daf;}if(daf.right>0){daf.i2=i;return daf;}
+            if(x>px[i]->r.x&&x<px[i]->r.x+px[i]->r.w&&y>px[i]->r.y&&y<px[i]->r.y+px[i]->r.h&&click(*px[i],x,y).a>1){
+                o daf=getko(x,y,px[i]);
+                if(daf.b){px[i]->draw();wr=wr1;hr=hr1;yr=yr1;xr=xr1;return daf;}if(daf.right>0){daf.i2=i;return daf;}
                 vector<block*>ans(px.begin()+i,px.end());yr=yr1;xr=xr1;hr=px.back()->r.y+px.back()->r.h-px[i]->r.y;wr=wr1;
                 for(int j=i+1;j<px.size();j++){if(wr<px[j]->r.w)wr=px[j]->r.w;}px.erase(px.begin()+i,px.end());
                 return{true,ans,i};
@@ -277,9 +277,9 @@ struct codtxs{
         }
         o jk;jk.b=false;return jk;
     }
-    o get(SDL_Renderer*renderer,int x,int y,SDL_Texture*yu){
+    o get(int x,int y,SDL_Texture*yu){
         for(int i=0;i<data.size();i++){
-            o g=getsh(renderer,x,y,data[i]);
+            o g=getsh(x,y,data[i]);
             if(g.b){
                 SDL_SetRenderTarget(renderer,yu);SDL_Rect oop={xr,yr,wr,hr};SDL_SetRenderDrawColor(renderer,255,255,255,255);
                 if(g.g==data[i].size()){

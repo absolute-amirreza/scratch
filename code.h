@@ -18,7 +18,7 @@ UINT32 color(int n){
     if(n==7)return 0xff0642ba;
     else return 0xff1f1fff;
 }
-void unic(SDL_Renderer*renderer){
+void unic(){
     TTF_Font* font = TTF_OpenFont(R"(C:\Windows\Fonts\seguisym.ttf)", 14);
     const char*a1c=u8"\u2B6F";
     SDL_Surface*a1=TTF_RenderUTF8_Blended(font,a1c, {255,255,255,255});
@@ -88,7 +88,7 @@ struct block{
             }
         }
     }
-    void draw(SDL_Renderer*renderer){
+    void draw(){
         rec();if(blu)SDL_DestroyTexture(blu);
         blu=SDL_CreateTexture(renderer,SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,r.w,r.h);
         UINT32 z=color;UINT8 rrr=z%256;z/=256;UINT8 gg=z%256;z/=256;UINT8 bb=z%256;z/=256;UINT8 aa=z;
@@ -97,22 +97,22 @@ struct block{
         if(sit==1){
             filledTrigonColor(renderer,0,13,13,0,13,26,color);
             filledTrigonColor(renderer,r.w-13,0,r.w-13,26,r.w,13,color);
-            bcl(renderer,13,0,r.w-13,26,color);
+            bcl(13,0,r.w-13,26,color);
         }
         else if(sit==2){
             filledCircleColor(renderer,13,13,13,color);
             filledCircleColor(renderer,r.w-13,13,13,color);
-            bcl(renderer,13,0,r.w-13,26,color);
+            bcl(13,0,r.w-13,26,color);
         }
         else{
-            bcl(renderer,0,0,r.w,26,color);
-            if(d)bcl(renderer,10,r.h-6,20,r.h,color);
-            if(u)bcl(renderer,10,0,20,6,0x00ffffff);
+            bcl(0,0,r.w,26,color);
+            if(d)bcl(10,r.h-6,20,r.h,color);
+            if(u)bcl(10,0,20,6,0x00ffffff);
             if(hofre[0]){
-                bcl(renderer,0,26,10,h[0]+26,color);
-                bcl(renderer,0,h[0]+26,r.w,h[0]+52,color);
-                bcl(renderer,20,26,30,32,color);
-                bcl(renderer,20,h[0]+26,30,h[0]+32,0x00ffffff);
+                bcl(0,26,10,h[0]+26,color);
+                bcl(0,h[0]+26,r.w,h[0]+52,color);
+                bcl(20,26,30,32,color);
+                bcl(20,h[0]+26,30,h[0]+32,0x00ffffff);
                 for(int i=0;i<hof[0].size();i++){
                     hof[0][i]->r.x=r.x+10;
                     if(i==0)hof[0][0]->r.y=r.y+26;
@@ -121,10 +121,10 @@ struct block{
                     SDL_RenderCopy(renderer,hof[0][i]->blu, nullptr,&cop);
                 }
                 if(hofre[1]){
-                    bcl(renderer,0,52+h[0],10,h[1]+52+h[0],color);
-                    bcl(renderer,0,h[1]+52+h[0],r.w,h[1]+78+h[0],color);
-                    bcl(renderer,20,52+h[0],30,58+h[0],color);
-                    bcl(renderer,20,h[1]+52+h[0],30,h[1]+58+h[0],0x00ffffff);
+                    bcl(0,52+h[0],10,h[1]+52+h[0],color);
+                    bcl(0,h[1]+52+h[0],r.w,h[1]+78+h[0],color);
+                    bcl(20,52+h[0],30,58+h[0],color);
+                    bcl(20,h[1]+52+h[0],30,h[1]+58+h[0],0x00ffffff);
                     textRGBA(renderer,3,h[0]+33,"else","tahoma.ttf",12,255,255,255,255);
                     for(int i=0;i<hof[1].size();i++){
                         hof[1][i]->r.x=r.x+10;
@@ -170,7 +170,7 @@ struct block{
             }
             else if(i/10==2){
                 int cc=convert(mod[i%10],12);
-                bcl(renderer,xx,4,xx+cc+17,22,0xffffffff);
+                bcl(xx,4,xx+cc+17,22,0xffffffff);
                 textRGBA(renderer,xx+2,5,mod[i%10].c_str(),"tahoma.ttf",12,rrr,gg,bb,aa);
                 SDL_Rect er={xx+cc+4,3,bw,bh};
                 SDL_RenderCopy(renderer,uni[int(color)], nullptr,&er);
@@ -185,7 +185,7 @@ struct block{
                     int a=convert(v[j],12)>14?(convert(v[j],12)-14):0;int g=a>0?7:(convert(v[j],12)/2);
                     filledCircleColor(renderer,xx+13,13,13,0xffffffff);
                     filledCircleColor(renderer,xx+13+a,13,13,0xffffffff);
-                    bcl(renderer,xx+13,0,xx+13+a,26,0xffffffff);
+                    bcl(xx+13,0,xx+13+a,26,0xffffffff);
                     textRGBA(renderer,xx-g+13,6,v[j].c_str(),"tahoma.ttf",12,0,0,0,255);
                     xx+=a+29;
                 }
@@ -204,7 +204,7 @@ struct exten{
 
     SDL_Texture* asli;
     UINT32 ecolor;
-    void create(SDL_Renderer*renderer){
+    void create(){
         asli=SDL_CreateTexture(renderer,SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,250,ht-80);
         tex.push_back(asli);
     }
@@ -214,7 +214,7 @@ struct exten{
             i.color=ecolor;
         }
     }
-    void draw(SDL_Renderer*renderer,int n){
+    void draw(int n){
         SDL_SetRenderTarget(renderer,asli);
         SDL_SetRenderDrawColor(renderer,225,245,225,255);
         SDL_RenderClear(renderer);
@@ -232,26 +232,26 @@ struct exten{
         }
         SDL_SetRenderTarget(renderer, nullptr);
     }
-    void copy(SDL_Renderer*renderer)const{
+    void copy()const{
         SDL_Rect rq={56,0,250,ht-80};
         SDL_RenderCopy(renderer,asli, nullptr,&rq);
     }
 };
-void myvc(SDL_Texture*&texture,SDL_Renderer*renderer){
+void myvc(SDL_Texture*&texture){
     texture=SDL_CreateTexture(renderer,SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,120,72);
     SDL_SetRenderTarget(renderer,texture);
     SDL_SetRenderDrawColor(renderer,255,255,255,255);
     SDL_RenderClear(renderer);
     rectangleColor(renderer,6,24,114,48,0xff000000);
-    bcl(renderer,96,48,120,72,0xffffa0a0);
+    bcl(96,48,120,72,0xffffa0a0);
     textRGBA(renderer,6,6,"name:","tahoma.ttf",12,0,0,0,255);
     textRGBA(renderer,100,52,"OK","tahoma.ttf",12,0,0,0,255);
-    bcl(renderer,12,26,15,46,0xff000000);
+    bcl(12,26,15,46,0xff000000);
     SDL_SetRenderTarget(renderer,nullptr);
 }
-void drawex(SDL_Renderer*renderer) {
-    bcl(renderer,0,0,56,ht-80,0xffffffff);
-    bcl(renderer,0,0,56,50,0xffe1f5e1);
+void drawex() {
+    bcl(0,0,56,ht-80,0xffffffff);
+    bcl(0,0,56,50,0xffe1f5e1);
     const char *a[9] = {"Motion", "Looks", "Sound", "Events", "Control", "Sensing", "Operators", "Variables",
                         "My blocks"};
     for (int i = 0; i < 9; i++) {
@@ -260,15 +260,15 @@ void drawex(SDL_Renderer*renderer) {
         textRGBA(renderer, x, 31 + 50 * i, a[i], "tahoma.ttf", 12, 0, 0, 0, 255);
     }
 }
-void drawexx(SDL_Renderer*renderer,int n,int m) {
-    bcl(renderer,0,50*n,56,50+50*n,0xffffffff);
-    bcl(renderer,0,50*n,56,50+50*n,0xffe1f5e1);
+void drawexx(int n,int m) {
+    bcl(0,50*n,56,50+50*n,0xffffffff);
+    bcl(0,50*n,56,50+50*n,0xffe1f5e1);
     const char *a[9] = {"Motion", "Looks", "Sound", "Events", "Control", "Sensing", "Operators", "Variables",
                         "My blocks"};
     filledCircleColor(renderer, 28, 20 + n * 50, 10, color(n));
     int x = 28 - convert(a[n], 12) / 2;
     textRGBA(renderer, x, 31 + 50 * n, a[n], "tahoma.ttf", 12, 0, 0, 0, 255);
-    bcl(renderer,0,50*m,56,50+50*m,0xffffffff);
+    bcl(0,50*m,56,50+50*m,0xffffffff);
     filledCircleColor(renderer, 28, 20 + m * 50, 10, color(m));
     int xx = 28 - convert(a[m], 12) / 2;
     textRGBA(renderer, xx, 31 + 50 * m, a[m], "tahoma.ttf", 12, 0, 0, 0, 255);

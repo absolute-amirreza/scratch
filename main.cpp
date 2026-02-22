@@ -2,6 +2,8 @@
 #include "settings.h"
 #include "costum.h"
 #include "run.h"
+#include <ctime>
+#include <cstdlib>
 
 int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
@@ -14,9 +16,40 @@ int main(int argc, char* argv[]) {
     ht = dm.h - 70;
     
     SDL_Window* window = SDL_CreateWindow("project", 0, 20, wt, ht, SDL_WINDOW_SHOWN);
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC|SDL_RENDERER_TARGETTEXTURE);
+    renderer=SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC|SDL_RENDERER_TARGETTEXTURE);
     SDL_RaiseWindow(window);
-    
+    drawmm( true);
+    msx(0, true);
+    SDL_RenderPresent(renderer);
+    unic();rust();
+
+    SDL_Rect ruc={wt-500,80,500,400};
+
+    ///////
+
+    MONITOR_W = dm.w;
+    MONITOR_H = dm.h;
+
+    WINDOW_W = MONITOR_W;
+    WINDOW_H = MONITOR_H - 70;
+
+    STAGE_X = MONITOR_W - 500;
+    STAGE_Y = 0;
+    SETT_PANEL_X = MONITOR_W - 500;
+    SETT_PANEL_Y = STAGE_Y + STAGE_H;
+    SETT_PANEL_H = MONITOR_H - SETT_PANEL_Y - 70;
+    CHAR_PANEL_W = MONITOR_W - 500;
+    CHAR_PANEL_Y = 0;
+
+    EDITOR_CANVAS_X = STAGE_X + (WINDOW_W - STAGE_X - EDITOR_CANVAS_W) / 2;
+    EDITOR_CANVAS_Y = STAGE_Y + 20;
+    EDITOR_CANVAS_RECT = {EDITOR_CANVAS_X, EDITOR_CANVAS_Y, EDITOR_CANVAS_W, EDITOR_CANVAS_H};
+
+    int bgBarW = 40, bgBarH = SETT_PANEL_H, bgBarX = WINDOW_W - bgBarW, bgBarY = SETT_PANEL_Y;
+    BG_BAR_RECT = {bgBarX, bgBarY, bgBarW, bgBarH};
+
+    int charBarW = 40, charBarH = SETT_PANEL_H, charBarX = bgBarX - charBarW, charBarY = SETT_PANEL_Y;
+    CHAR_BAR_RECT = {charBarX, charBarY, charBarW, charBarH};
     TTF_Font* regular = TTF_OpenFont("assets/fonts/AkzidenzGrotesk-Regular.otf", 16);
     TTF_Font* bold = TTF_OpenFont("assets/fonts/AkzidenzGrotesk-Bold.otf", 18);
 
@@ -24,13 +57,28 @@ int main(int argc, char* argv[]) {
 
     TTF_Font* font = TTF_OpenFont("assets/fonts/AkzidenzGrotesk-Regular.otf", 14);
 
-    SDL_Texture* run = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 500, 400);
-    tex.push_back(run);SDL_Rect ruc={wt-500,80,500,400};
+    BackgroundState bgState = {};
+    BackgroundMenuState bgMenu = {};
+    CharacterManager charMgr = {};
+    ImageEditorState imgEditor = {};
+    CharacterBarState charBar = {};
 
-    drawmm(renderer, true);
-    msx(renderer, 0, true);
-    SDL_RenderPresent(renderer);
-    unic(renderer);
+    initBackgroundMenuState(&bgMenu);
+    initCharacterManager(&charMgr);
+    initCharacterBarState(&charBar);
+
+    loadDefaultBackgrounds(renderer, &bgState,
+                           "assets/backgrounds/abandoned_class.png", "Abandoned Class",
+                           "assets/backgrounds/black_forest.png", "Black Forest");
+
+    bool running = true, mouseDown = false, mouseJustPressed = false, mouseClicked = false;
+    int mouseX = 0, mouseY = 0, dragIndex = -1;
+    bool requestAddChar = false, requestRename = false;
+    std::string renameBuffer;
+
+///////
+
+
     
     exten exc[9];
     exten exb[9];
@@ -44,7 +92,7 @@ int main(int argc, char* argv[]) {
         exb[i].color();
         
         for(int j = 0; j < exc[i].blocks.size(); j++) {
-            exc[i].blocks[j].draw(renderer);
+            exc[i].blocks[j].draw();
             if(j > 0)
                 exc[i].blocks[j].r.y = exc[i].blocks[j-1].r.y + exc[i].blocks[j-1].r.h + 10;
             else {
@@ -56,7 +104,7 @@ int main(int argc, char* argv[]) {
         }
         
         for(int j = 0; j < exb[i].blocks.size(); j++) {
-            exb[i].blocks[j].draw(renderer);
+            exb[i].blocks[j].draw();
             if(j > 0)
                 exb[i].blocks[j].r.y = exb[i].blocks[j-1].r.y + exb[i].blocks[j-1].r.h + 10;
             else {
@@ -67,16 +115,16 @@ int main(int argc, char* argv[]) {
             exb[i].blocks[j].r.x = 5 + exb[i].blocks[j].b * 17;
         }
         
-        exc[i].create(renderer);
-        exb[i].create(renderer);
-        exc[i].draw(renderer, i);
-        exb[i].draw(renderer, i);
+        exc[i].create();
+        exb[i].create();
+        exc[i].draw( i);
+        exb[i].draw(i);
     }
 
     codtxs start{};
     spco[0].push_back(start);
-    spco[0][0].create(renderer, exc[0]);
-    spco[0][0].copy(renderer);
+    spco[0][0].create(exc[0]);
+    spco[0][0].copy();
     SDL_RenderPresent(renderer);
     
     bool drag = false;
@@ -90,7 +138,7 @@ int main(int argc, char* argv[]) {
     vector<block*> current;
     bool myval = false;
     SDL_Texture* creva = nullptr;
-    myvc(creva, renderer);
+    myvc(creva);
     SDL_Rect bn = {149, 5, 120, 72};
     string cva;
     int ivar;
@@ -119,7 +167,7 @@ int main(int argc, char* argv[]) {
                             SDL_Rect cnc={typeb->r.x+50,typeb->r.y,typeb->r.w-50,26};
                             SDL_SetRenderDrawColor(renderer,255,255,255,255);
                             SDL_RenderFillRect(renderer,&cnc);
-                            typeb->mod[ts]=typeb->m[ts][i];typeb->draw(renderer);
+                            typeb->mod[ts]=typeb->m[ts][i];typeb->draw();
                             SDL_SetRenderTarget(renderer,working->texture);
                             SDL_RenderCopy(renderer,typeb->blu, nullptr,&typeb->r);
                         }
@@ -153,7 +201,7 @@ int main(int argc, char* argv[]) {
                             pcb.color = color(7);
                             pcb.r.x = 22;
                             pcb.r.y = exc[7].blocks.back().r.y + 36;
-                            pcb.draw(renderer);
+                            pcb.draw();
                             exc[7].blocks.push_back(pcb);
                             exb[7].blocks.push_back(pcb);
                             SDL_SetRenderTarget(renderer, exc[7].asli);
@@ -163,7 +211,7 @@ int main(int argc, char* argv[]) {
                             SDL_RenderCopy(renderer, pcb.blu, nullptr, &pcb.r);
                             rectangleColor(renderer, 5, pcb.r.y + 7, 17, pcb.r.y + 19, 0xff000000);
                             SDL_SetRenderTarget(renderer, working->texture);
-                            exc[7].copy(renderer);
+                            exc[7].copy();
                             cva = "";
                             change_c = true;
                         }
@@ -178,13 +226,13 @@ int main(int argc, char* argv[]) {
                         exc[7].blocks.erase(exc[7].blocks.begin() + i7);
                         for(int k = i7; k < exc[7].blocks.size(); k++)
                             exc[7].blocks[k].r.y -= 36;
-                        exc[7].draw(renderer, 7);
+                        exc[7].draw( 7);
                         SDL_SetRenderTarget(renderer, working->texture);
-                        exc[7].copy(renderer);
+                        exc[7].copy();
                         exb[7].blocks.erase(exb[7].blocks.begin() + i7);
                         for(int k = i7; k < exb[7].blocks.size(); k++)
                             exb[7].blocks[k].r.y -= 36;
-                        exb[7].draw(renderer, 7);
+                        exb[7].draw( 7);
                         SDL_SetRenderTarget(renderer, working->texture);
                     }
                 }
@@ -200,14 +248,14 @@ int main(int argc, char* argv[]) {
                     if(m != n) {
                         SDL_SetRenderTarget(renderer, working->texture);
                         change_c = true;
-                        drawexx(renderer, n, m);
+                        drawexx(n, m);
                         m = n;
-                        exc[n].copy(renderer);
+                        exc[n].copy();
                         if(m < 8 && m != 6 && m != 4 && m != 3)
                             for(const string& i : working->bol[m])
                                 for(const block& j : exc[n].blocks)
                                     if(j.b && j.pn[0] == i)
-                                        bcl(renderer, 61, j.r.y + 7, 73, j.r.y + 19, 0xffff0000);
+                                        bcl( 61, j.r.y + 7, 73, j.r.y + 19, 0xffff0000);
                     }
                 }
                 else if(e.button.x > 56 && e.button.x < 306 && e.button.y > 80) {
@@ -223,8 +271,8 @@ int main(int argc, char* argv[]) {
                     }
                     else {
                         for(const auto& i : exc[m].blocks) {
-                            if(e.button.x - 56 > i.r.x && e.button.x - 56 < i.r.x + i.r.w && e.button.y - 80 > i.r.y && e.button.y - 80 < i.r.y + i.r.h && click(renderer, i, e.button.x - 56, e.button.y - 80).a > 1) {
-                                current = {copyb(renderer, i)};
+                            if(e.button.x - 56 > i.r.x && e.button.x - 56 < i.r.x + i.r.w && e.button.y - 80 > i.r.y && e.button.y - 80 < i.r.y + i.r.h && click(i, e.button.x - 56, e.button.y - 80).a > 1) {
+                                current = {copyb(i)};
                                 drag = true;
                                 xz = e.button.x;
                                 yz = e.button.y;
@@ -238,11 +286,11 @@ int main(int argc, char* argv[]) {
                                 auto it = find(working->bol[m].begin(), working->bol[m].end(), i.pn[0]);
                                 change_c = true;
                                 if(it == working->bol[m].end()) {
-                                    bcl(renderer, 61, i.r.y + 7, 73, i.r.y + 19, 0xffff0000);
+                                    bcl(61, i.r.y + 7, 73, i.r.y + 19, 0xffff0000);
                                     working->bol[m].push_back(i.pn[0]);
                                 }
                                 else {
-                                    bcl(renderer, 61, i.r.y + 7, 73, i.r.y + 19, 0xffe1f0e1);
+                                    bcl(61, i.r.y + 7, 73, i.r.y + 19, 0xffe1f0e1);
                                     working->bol[m].erase(it);
                                     rectangleColor(renderer, 61, i.r.y + 7, 73, i.r.y + 19, 0xff000000);
                                 }
@@ -252,7 +300,7 @@ int main(int argc, char* argv[]) {
                 }
                 else if(e.button.x > 306 && e.button.x < wt - 500 && e.button.y > 80) {
                     SDL_SetRenderTarget(renderer, working->texture);
-                    o ss = working->get(renderer, e.button.x, e.button.y - 80, working->texture);
+                    o ss = working->get(e.button.x, e.button.y - 80, working->texture);
                     SDL_SetRenderTarget(renderer, working->texture);
                     if(ss.b) {
                         drag = true;
@@ -275,7 +323,7 @@ int main(int argc, char* argv[]) {
                         SDL_StartTextInput();
                         change_c = true;
                         ts = ss.ss;
-                        bcl(renderer, typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y, typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
+                        bcl(typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y, typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
                     }
                     else if(ss.right ==2) {
                         mo = true;
@@ -285,7 +333,7 @@ int main(int argc, char* argv[]) {
                         SDL_SetRenderTarget(renderer,backsave);
                         SDL_RenderCopy(renderer,working->texture, nullptr, nullptr);
                         SDL_SetRenderTarget(renderer,working->texture);
-                        bcl(renderer,300,0,500,400,typeb->color);
+                        bcl(300,0,500,400,typeb->color);
                         for(int i=0;i<typeb->m[ts].size();i++){
                             textRGBA(renderer,i%2==0?300:400,2+(i/2)*18,typeb->m[ts][i].c_str(),"tahoma.ttf",12,0,0,0,255);
                         }
@@ -294,7 +342,7 @@ int main(int argc, char* argv[]) {
                 else if(e.button.y > 50 && e.button.y < 80) {
                     if(e.button.x<216){
                         SDL_SetRenderTarget(renderer, nullptr);
-                        msx(renderer, e.button.x, true);
+                        msx( e.button.x, true);
                     }
                     else if(cligri(e.button.x,e.button.y))1;
                 }
@@ -303,13 +351,13 @@ int main(int argc, char* argv[]) {
                 if(m == 7 && !dellv) {
                     SDL_SetRenderTarget(renderer, working->texture);
                     for(int i = 5; i < exc[7].blocks.size(); i++) {
-                        if(e.button.x - 56 > exc[7].blocks[i].r.x && e.button.x - 56 < exc[7].blocks[i].r.x + exc[7].blocks[i].r.w && e.button.y - 80 > exc[7].blocks[i].r.y && e.button.y - 80 < exc[7].blocks[i].r.y + exc[7].blocks[i].r.h && click(renderer, exc[7].blocks[i], e.button.x - 56, e.button.y - 80).a > 1) {
+                        if(e.button.x - 56 > exc[7].blocks[i].r.x && e.button.x - 56 < exc[7].blocks[i].r.x + exc[7].blocks[i].r.w && e.button.y - 80 > exc[7].blocks[i].r.y && e.button.y - 80 < exc[7].blocks[i].r.y + exc[7].blocks[i].r.h && click(exc[7].blocks[i], e.button.x - 56, e.button.y - 80).a > 1) {
                             SDL_SetRenderTarget(renderer, backsave);
                             dellv = true;
                             SDL_RenderCopy(renderer, working->texture, nullptr, nullptr);
                             SDL_SetRenderTarget(renderer, working->texture);
                             i7 = i;
-                            bcl(renderer, 110, exc[7].blocks[i].r.y + 13, 149, exc[7].blocks[i].r.y + 39, 0xffa0a0ff);
+                            bcl( 110, exc[7].blocks[i].r.y + 13, 149, exc[7].blocks[i].r.y + 39, 0xffa0a0ff);
                             textRGBA(renderer, 113, exc[7].blocks[i].r.y + 18, "Delete", "tahoma.ttf", 12, 0, 0, 0, 255);
                             change_c = true;
                         }
@@ -321,20 +369,20 @@ int main(int argc, char* argv[]) {
             if(myval) {
                 SDL_SetRenderTarget(renderer, working->texture);
                 cva += e.text.text;
-                bcl(renderer, 156, 30, 262, 52, 0xffffffff);
+                bcl(156, 30, 262, 52, 0xffffffff);
                 textRGBA(renderer, 158, 33, cva.c_str(), "tahoma.ttf", 12, 0, 0, 0, 255);
                 int ter = convert(cva, 12);
-                bcl(renderer, 161 + ter, 31, 164 + ter, 51, 0xff000000);
+                bcl( 161 + ter, 31, 164 + ter, 51, 0xff000000);
                 change_c = true;
             }
             else if(ty) {
                 SDL_SetRenderTarget(renderer, working->texture);
                 typeb->v[ts] += e.text.text;
-                typeb->draw(renderer);
+                typeb->draw();
                 SDL_SetRenderTarget(renderer, working->texture);
                 SDL_RenderCopy(renderer, typeb->blu, nullptr, &typeb->r);
                 change_c = true;
-                bcl(renderer, typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y, typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
+                bcl( typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y, typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
             }
         }
         else if(e.type == SDL_KEYDOWN) {
@@ -342,31 +390,31 @@ int main(int argc, char* argv[]) {
                 SDL_SetRenderTarget(renderer, working->texture);
                 if(e.key.keysym.sym == SDLK_BACKSPACE && !cva.empty()) {
                     cva.pop_back();
-                    bcl(renderer, 156, 30, 262, 52, 0xffffffff);
+                    bcl(156, 30, 262, 52, 0xffffffff);
                     if(!cva.empty())
                         textRGBA(renderer, 158, 33, cva.c_str(), "tahoma.ttf", 12, 0, 0, 0, 255);
                     int ter = convert(cva, 12);
-                    bcl(renderer, 161 + ter, 31, 164 + ter, 51, 0xff000000);
+                    bcl(161 + ter, 31, 164 + ter, 51, 0xff000000);
                     change_c = true;
                 }
             }
             else if(ty) {
                 if(e.key.keysym.sym == SDLK_BACKSPACE && !typeb->v[ts].empty()) {
                     SDL_SetRenderTarget(renderer, working->texture);
-                    bcl(renderer, typeb->r.x + 50, typeb->r.y, typeb->r.x + typeb->r.w, typeb->r.y + typeb->r.h, 0xffffffff);
+                    bcl(typeb->r.x + 50, typeb->r.y, typeb->r.x + typeb->r.w, typeb->r.y + typeb->r.h, 0xffffffff);
                     typeb->v[ts].pop_back();
-                    typeb->draw(renderer);
+                    typeb->draw();
                     SDL_SetRenderTarget(renderer, working->texture);
                     change_c = true;
                     SDL_RenderCopy(renderer, typeb->blu, nullptr, &typeb->r);
-                    bcl(renderer, typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y, typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
+                    bcl(typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y, typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
                 }
             }
         }
         else if(e.type == SDL_MOUSEBUTTONUP) {
             if(drag) {
                 SDL_SetRenderTarget(renderer, working->texture);
-                working->add(renderer, backsave, current, working->texture);
+                working->add( backsave, current, working->texture);
                 drag = false;
                 change_c = true;
             }
@@ -384,14 +432,14 @@ int main(int argc, char* argv[]) {
                 change_c = true;
             }
         }
-        if(execute(renderer)){
+        if(execute()){
             change_e=true;
             SDL_SetRenderTarget(renderer,run);
         }
         if(change_c) {
             change_c = false;
             SDL_SetRenderTarget(renderer, nullptr);
-            working->copy(renderer);
+            working->copy();
             SDL_RenderPresent(renderer);
         }
         else if(change_e) {
@@ -410,10 +458,15 @@ int main(int argc, char* argv[]) {
         SDL_DestroyTexture(i->blu);
         delete i;
     }
-    
+
+
+    destroyCharacterManager(&charMgr);
+    destroyBackgroundState(&bgState);
+    if (imgEditor.canvas) SDL_DestroyTexture(imgEditor.canvas);
     if(regular) TTF_CloseFont(regular);
     if(bold) TTF_CloseFont(bold);if(font) TTF_CloseFont(font);
-    
+
+
     TTF_Quit();
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
