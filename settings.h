@@ -60,7 +60,7 @@ inline void initCharacterBarState(CharacterBarState* cb) {
 
 inline void renderCharacterBar(SDL_Renderer* renderer, TTF_Font* font,
                                CharacterBarState* cb, SDL_Rect barRect) {
-    constexpr SDL_Color white = {255, 255, 255, 255};
+    const SDL_Color white = {255, 255, 255, 255};
 
     SDL_SetRenderDrawColor(renderer, 25, 25, 50, 255);
     SDL_RenderFillRect(renderer, &barRect);
@@ -98,10 +98,10 @@ inline void renderCharacterBarPanel(SDL_Renderer* renderer, TTF_Font* font,
                                     CharacterManager* mgr,
                                     int panelX, int panelY,
                                     int mouseX, int mouseY, bool mouseClicked) {
-    constexpr SDL_Color white   = {255, 255, 255, 255};
-    constexpr SDL_Color active  = {0, 200, 255, 255};
-    constexpr SDL_Color normal  = {80, 80, 80, 255};
-    constexpr SDL_Color hidden  = {180, 50, 50, 255};
+    const SDL_Color white   = {255, 255, 255, 255};
+    const SDL_Color active  = {0, 200, 255, 255};
+    const SDL_Color normal  = {80, 80, 80, 255};
+    const SDL_Color hidden  = {180, 50, 50, 255};
     constexpr int thumbW = 50, thumbH = 50, padding = 8, rowH = thumbH + padding + 16;
 
     const int panelW = 190;
@@ -204,7 +204,7 @@ inline void toggleBackgroundMenu(BackgroundMenuState* menu) {
 inline void renderBackgroundBar(SDL_Renderer* renderer, TTF_Font* font,
                                 BackgroundMenuState* menu, BackgroundState* bgState,
                                 SDL_Rect barRect) {
-    constexpr SDL_Color white = {255, 255, 255, 255};
+    const SDL_Color white = {255, 255, 255, 255};
 
     SDL_SetRenderDrawColor(renderer, 25, 25, 50, 255);
     SDL_RenderFillRect(renderer, &barRect);
@@ -332,14 +332,21 @@ inline void renderBackground(SDL_Renderer* renderer, BackgroundState* bgState,
 inline void loadDefaultBackgrounds(SDL_Renderer* renderer, BackgroundState* bgState,
                                    const std::string& path1, const std::string& name1,
                                    const std::string& path2, const std::string& name2) {
-    SDL_Surface* s1 = IMG_Load(path1.c_str());
+    // Helper: try the given path first, then "../" + path (for builds run from cmake-build-debug).
+    auto tryLoad = [](const std::string& path) -> SDL_Surface* {
+        SDL_Surface* s = IMG_Load(path.c_str());
+        if (!s) s = IMG_Load(("../" + path).c_str());
+        return s;
+    };
+
+    SDL_Surface* s1 = tryLoad(path1);
     if (s1) {
         bgState->defaultBgs[0] = SDL_CreateTextureFromSurface(renderer, s1);
         SDL_FreeSurface(s1);
     }
     bgState->defaultBgNames[0] = name1;
 
-    SDL_Surface* s2 = IMG_Load(path2.c_str());
+    SDL_Surface* s2 = tryLoad(path2);
     if (s2) {
         bgState->defaultBgs[1] = SDL_CreateTextureFromSurface(renderer, s2);
         SDL_FreeSurface(s2);
@@ -356,8 +363,8 @@ inline int renderDefaultBackgroundLibrary(SDL_Renderer* renderer, TTF_Font* font
                                           int, int) {
     int selectedIndex = -1;
     constexpr int thumbW = 160, thumbH = 100, padding = 15;
-    constexpr SDL_Color white = {255, 255, 255, 255};
-    constexpr SDL_Color panelBg = {20, 20, 20, 210};
+    const SDL_Color white = {255, 255, 255, 255};
+    const SDL_Color panelBg = {20, 20, 20, 210};
 
     const int panelW = DEFAULT_BG_COUNT * (thumbW + padding) + padding;
     const int panelH = thumbH + 20 + padding * 3;
@@ -385,6 +392,16 @@ inline int renderDefaultBackgroundLibrary(SDL_Renderer* renderer, TTF_Font* font
         } else {
             SDL_SetRenderDrawColor(renderer, 80, 80, 80, 255);
             SDL_RenderFillRect(renderer, &thumbRect);
+            // Draw a small "missing" label so the user knows it failed
+            const SDL_Color red = {200, 80, 80, 255};
+            SDL_Surface* ms = TTF_RenderText_Blended(font, "missing", red);
+            if (ms) {
+                SDL_Texture* mt = SDL_CreateTextureFromSurface(renderer, ms);
+                SDL_Rect mr = {imgX + (thumbW - ms->w) / 2, imgY + (thumbH - ms->h) / 2, ms->w, ms->h};
+                SDL_RenderCopy(renderer, mt, nullptr, &mr);
+                SDL_DestroyTexture(mt);
+                SDL_FreeSurface(ms);
+            }
         }
 
         SDL_Surface* nameSurf = TTF_RenderText_Blended(font, bgState->defaultBgNames[i].c_str(), white);
@@ -403,9 +420,13 @@ inline int renderDefaultBackgroundLibrary(SDL_Renderer* renderer, TTF_Font* font
         }
     }
 
-    if (selectedIndex >= 0 && bgState->defaultBgs[selectedIndex] != nullptr) {
-        bgState->currentBg = bgState->defaultBgs[selectedIndex];
-        bgState->currentBgName = bgState->defaultBgNames[selectedIndex];
+    if (selectedIndex >= 0) {
+        if (bgState->defaultBgs[selectedIndex] != nullptr) {
+            bgState->currentBg     = bgState->defaultBgs[selectedIndex];
+            bgState->currentBgName = bgState->defaultBgNames[selectedIndex];
+        } else {
+            selectedIndex = -1;
+        }
     }
     return selectedIndex;
 }
@@ -463,6 +484,7 @@ inline void initImageEditor(SDL_Renderer* renderer, ImageEditorState* editor,
 
 inline void editorDrawCircle(SDL_Renderer* renderer, SDL_Texture* canvas,
                              int cx, int cy, int radius, SDL_Color color) {
+
     SDL_SetRenderTarget(renderer, canvas);
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     for (int dy = -radius; dy <= radius; dy++) {
@@ -471,7 +493,6 @@ inline void editorDrawCircle(SDL_Renderer* renderer, SDL_Texture* canvas,
                 SDL_RenderDrawPoint(renderer, cx + dx, cy + dy);
         }
     }
-    SDL_SetRenderTarget(renderer, nullptr);
 }
 
 inline void handleImageEditorMouse(SDL_Renderer* renderer, ImageEditorState* editor,
@@ -512,7 +533,7 @@ inline void renderImageEditor(SDL_Renderer* renderer, TTF_Font* font,
                               int mouseX, int mouseY, bool mouseClicked) {
     if (!editor->active) return;
 
-    constexpr SDL_Color white = {255, 255, 255, 255};
+    const SDL_Color white = {255, 255, 255, 255};
 
     SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
     SDL_Rect border = {canvasRect.x - 2, canvasRect.y - 2,
@@ -522,7 +543,7 @@ inline void renderImageEditor(SDL_Renderer* renderer, TTF_Font* font,
 
     const int toolY = canvasRect.y + canvasRect.h + 8, toolX = canvasRect.x;
 
-    constexpr SDL_Color palette[] = {
+    const SDL_Color palette[] = {
             {0, 0, 0, 255}, {255, 0, 0, 255}, {0, 128, 0, 255}, {0, 0, 255, 255},
             {255, 255, 0, 255}, {255, 165, 0, 255}, {128, 0, 128, 255}, {255, 255, 255, 255}
     };
@@ -622,7 +643,9 @@ inline void renderImageEditor(SDL_Renderer* renderer, TTF_Font* font,
         mouseX >= cancelBtn.x && mouseX <= cancelBtn.x + cancelBtn.w &&
         mouseY >= cancelBtn.y && mouseY <= cancelBtn.y + cancelBtn.h) {
         editor->confirmed = false;
-        editor->active = false;
+        editor->active    = false;
+        SDL_DestroyTexture(editor->canvas);
+        editor->canvas = nullptr;
     }
 }
 
@@ -803,10 +826,10 @@ inline bool deleteCharacter(CharacterManager* mgr, int index) {
 inline void renderCharacterPanel(SDL_Renderer* renderer, TTF_Font* font,
                                  CharacterManager* mgr, SDL_Rect panelRect,
                                  int mouseX, int mouseY, bool mouseClicked) {
-    constexpr SDL_Color panelBg = {25, 25, 25, 240};
-    constexpr SDL_Color activeBdr = {0, 200, 255, 255};
-    constexpr SDL_Color normalBdr = {80, 80, 80, 255};
-    constexpr SDL_Color white = {255, 255, 255, 255};
+    const SDL_Color panelBg = {25, 25, 25, 240};
+    const SDL_Color activeBdr = {0, 200, 255, 255};
+    const SDL_Color normalBdr = {80, 80, 80, 255};
+    const SDL_Color white = {255, 255, 255, 255};
 
     SDL_SetRenderDrawColor(renderer, panelBg.r, panelBg.g, panelBg.b, panelBg.a);
     SDL_RenderFillRect(renderer, &panelRect);
@@ -855,7 +878,7 @@ inline void renderCharacterPanel(SDL_Renderer* renderer, TTF_Font* font,
         }
 
         if (!c.visible) {
-            constexpr SDL_Color hiddenColor = {180, 50, 50, 255};
+            const SDL_Color hiddenColor = {180, 50, 50, 255};
             SDL_Surface* hideSurf = TTF_RenderText_Blended(font, "[hidden]", hiddenColor);
             if (hideSurf) {
                 SDL_Texture* hideTex = SDL_CreateTextureFromSurface(renderer, hideSurf);
@@ -880,9 +903,9 @@ inline void renderCharacterSettingsPanel(SDL_Renderer* renderer, TTF_Font* font,
                                          int mouseX, int mouseY, bool mouseClicked,
                                          bool* requestAddChar, bool* requestRename,
                                          std::string& renameBuffer) {
-    constexpr SDL_Color panelBg = {30, 30, 30, 240};
-    constexpr SDL_Color white = {255, 255, 255, 255};
-    constexpr SDL_Color gray = {160, 160, 160, 255};
+    const SDL_Color panelBg = {30, 30, 30, 240};
+    const SDL_Color white = {255, 255, 255, 255};
+    const SDL_Color gray = {160, 160, 160, 255};
 
     SDL_SetRenderDrawColor(renderer, panelBg.r, panelBg.g, panelBg.b, panelBg.a);
     SDL_RenderFillRect(renderer, &panelRect);
@@ -1158,6 +1181,7 @@ inline void destroyBackgroundState(BackgroundState* bgState) {
         SDL_DestroyTexture(bgState->currentBg);
     bgState->currentBg = nullptr;
 }
+
 static int MONITOR_W = 0, MONITOR_H = 0;
 static int WINDOW_W = 0, WINDOW_H = 0, WINDOW_X = 0, WINDOW_Y = 20;
 static int TOOLBAR_H = 0;
@@ -1187,7 +1211,7 @@ static bool simpleTextInputDialog(SDL_Renderer* renderer, TTF_Font* font,
             if (e.type == SDL_TEXTINPUT) { text += e.text.text; }
         }
 
-        constexpr SDL_Color white = {255, 255, 255, 255}, cyan = {100, 220, 255, 255}, hint = {150, 150, 150, 255};
+        const SDL_Color white = {255, 255, 255, 255}, cyan = {100, 220, 255, 255}, hint = {150, 150, 150, 255};
 
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 160);
