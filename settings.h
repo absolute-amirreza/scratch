@@ -7,6 +7,7 @@
 #include <windows.h>
 #include <string>
 #include <algorithm>
+using namespace std;
 
 constexpr int MAX_CHARACTERS = 20;
 constexpr int DEFAULT_BG_COUNT = 2;
@@ -21,7 +22,6 @@ struct Character {
     float rotation = 0.0f;
     bool visible = true, isActive = false;
 };
-
 struct BackgroundState {
     SDL_Texture* currentBg = nullptr;
     std::string currentBgName;
@@ -52,15 +52,15 @@ struct ImageEditorState {
 };
 
 inline void setActiveCharacter(CharacterManager* mgr, int index);
-inline int  addOrangeSquareCharacter(SDL_Renderer* renderer, CharacterManager* mgr);
+inline int  addOrangeSquareCharacter(CharacterManager* mgr);
 
 inline void initCharacterBarState(CharacterBarState* cb) {
     cb->panelOpen = false;
 }
 
-inline void renderCharacterBar(SDL_Renderer* renderer, TTF_Font* font,
-                                CharacterBarState* cb, SDL_Rect barRect) {
-    constexpr SDL_Color white = {255, 255, 255, 255};
+inline void renderCharacterBar(TTF_Font* font,
+                               CharacterBarState* cb, SDL_Rect barRect) {
+    const SDL_Color white = {255, 255, 255, 255};
 
     SDL_SetRenderDrawColor(renderer, 25, 25, 50, 255);
     SDL_RenderFillRect(renderer, &barRect);
@@ -69,9 +69,9 @@ inline void renderCharacterBar(SDL_Renderer* renderer, TTF_Font* font,
 
     SDL_Rect btnRect = {barRect.x + 5, barRect.y + 10, barRect.w - 10, 90};
     SDL_SetRenderDrawColor(renderer,
-        cb->panelOpen ? 100 : 60,
-        cb->panelOpen ? 60  : 60,
-        cb->panelOpen ? 220 : 180, 255);
+                           cb->panelOpen ? 100 : 60,
+                           cb->panelOpen ? 60  : 60,
+                           cb->panelOpen ? 220 : 180, 255);
     SDL_RenderFillRect(renderer, &btnRect);
 
     SDL_Surface* surf = TTF_RenderText_Blended(font, "CH", white);
@@ -86,7 +86,7 @@ inline void renderCharacterBar(SDL_Renderer* renderer, TTF_Font* font,
 }
 
 inline void handleCharacterBarClick(CharacterBarState* cb, SDL_Rect barRect,
-                                     int mouseX, int mouseY) {
+                                    int mouseX, int mouseY) {
     SDL_Rect btnRect = {barRect.x + 5, barRect.y + 10, barRect.w - 10, 90};
     if (mouseX >= btnRect.x && mouseX <= btnRect.x + btnRect.w &&
         mouseY >= btnRect.y && mouseY <= btnRect.y + btnRect.h) {
@@ -94,14 +94,14 @@ inline void handleCharacterBarClick(CharacterBarState* cb, SDL_Rect barRect,
     }
 }
 
-inline void renderCharacterBarPanel(SDL_Renderer* renderer, TTF_Font* font,
-                                     CharacterManager* mgr,
-                                     int panelX, int panelY,
-                                     int mouseX, int mouseY, bool mouseClicked) {
-    constexpr SDL_Color white   = {255, 255, 255, 255};
-    constexpr SDL_Color active  = {0, 200, 255, 255};
-    constexpr SDL_Color normal  = {80, 80, 80, 255};
-    constexpr SDL_Color hidden  = {180, 50, 50, 255};
+inline void renderCharacterBarPanel( TTF_Font* font,
+                                    CharacterManager* mgr,
+                                    int panelX, int panelY,
+                                    int mouseX, int mouseY, bool mouseClicked) {
+    const SDL_Color white   = {255, 255, 255, 255};
+    const SDL_Color active  = {0, 200, 255, 255};
+    const SDL_Color normal  = {80, 80, 80, 255};
+    const SDL_Color hidden  = {180, 50, 50, 255};
     constexpr int thumbW = 50, thumbH = 50, padding = 8, rowH = thumbH + padding + 16;
 
     const int panelW = 190;
@@ -201,10 +201,10 @@ inline void toggleBackgroundMenu(BackgroundMenuState* menu) {
     }
 }
 
-inline void renderBackgroundBar(SDL_Renderer* renderer, TTF_Font* font,
+inline void renderBackgroundBar(TTF_Font* font,
                                 BackgroundMenuState* menu, BackgroundState* bgState,
                                 SDL_Rect barRect) {
-    constexpr SDL_Color white = {255, 255, 255, 255};
+    const SDL_Color white = {255, 255, 255, 255};
 
     SDL_SetRenderDrawColor(renderer, 25, 25, 50, 255);
     SDL_RenderFillRect(renderer, &barRect);
@@ -321,25 +321,32 @@ inline int handleBackgroundBarClick(BackgroundMenuState* menu, SDL_Rect barRect,
     return 0;
 }
 
-inline void renderBackground(SDL_Renderer* renderer, BackgroundState* bgState,
+inline void renderBackground(BackgroundState* bgState,
                              SDL_Rect stageRect) {
-    SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
+    SDL_SetRenderDrawColor(renderer, 130, 130, 130, 255);
     SDL_RenderFillRect(renderer, &stageRect);
     if (bgState->currentBg != nullptr)
         SDL_RenderCopy(renderer, bgState->currentBg, nullptr, &stageRect);
 }
 
-inline void loadDefaultBackgrounds(SDL_Renderer* renderer, BackgroundState* bgState,
+inline void loadDefaultBackgrounds(BackgroundState* bgState,
                                    const std::string& path1, const std::string& name1,
                                    const std::string& path2, const std::string& name2) {
-    SDL_Surface* s1 = IMG_Load(path1.c_str());
+    // Helper: try the given path first, then "../" + path (for builds run from cmake-build-debug).
+    auto tryLoad = [](const std::string& path) -> SDL_Surface* {
+        SDL_Surface* s = IMG_Load(path.c_str());
+        if (!s) s = IMG_Load(("../" + path).c_str());
+        return s;
+    };
+
+    SDL_Surface* s1 = tryLoad(path1);
     if (s1) {
         bgState->defaultBgs[0] = SDL_CreateTextureFromSurface(renderer, s1);
         SDL_FreeSurface(s1);
     }
     bgState->defaultBgNames[0] = name1;
 
-    SDL_Surface* s2 = IMG_Load(path2.c_str());
+    SDL_Surface* s2 = tryLoad(path2);
     if (s2) {
         bgState->defaultBgs[1] = SDL_CreateTextureFromSurface(renderer, s2);
         SDL_FreeSurface(s2);
@@ -349,15 +356,15 @@ inline void loadDefaultBackgrounds(SDL_Renderer* renderer, BackgroundState* bgSt
     if (bgState->currentBgName.empty()) bgState->currentBgName = "None";
 }
 
-inline int renderDefaultBackgroundLibrary(SDL_Renderer* renderer, TTF_Font* font,
+inline int renderDefaultBackgroundLibrary(TTF_Font* font,
                                           BackgroundState* bgState,
                                           int panelX, int panelY,
                                           int mouseX, int mouseY, bool mouseClicked,
                                           int, int) {
     int selectedIndex = -1;
     constexpr int thumbW = 160, thumbH = 100, padding = 15;
-    constexpr SDL_Color white = {255, 255, 255, 255};
-    constexpr SDL_Color panelBg = {20, 20, 20, 210};
+    const SDL_Color white = {255, 255, 255, 255};
+    const SDL_Color panelBg = {20, 20, 20, 210};
 
     const int panelW = DEFAULT_BG_COUNT * (thumbW + padding) + padding;
     const int panelH = thumbH + 20 + padding * 3;
@@ -385,6 +392,16 @@ inline int renderDefaultBackgroundLibrary(SDL_Renderer* renderer, TTF_Font* font
         } else {
             SDL_SetRenderDrawColor(renderer, 80, 80, 80, 255);
             SDL_RenderFillRect(renderer, &thumbRect);
+            // Draw a small "missing" label so the user knows it failed
+            const SDL_Color red = {200, 80, 80, 255};
+            SDL_Surface* ms = TTF_RenderText_Blended(font, "missing", red);
+            if (ms) {
+                SDL_Texture* mt = SDL_CreateTextureFromSurface(renderer, ms);
+                SDL_Rect mr = {imgX + (thumbW - ms->w) / 2, imgY + (thumbH - ms->h) / 2, ms->w, ms->h};
+                SDL_RenderCopy(renderer, mt, nullptr, &mr);
+                SDL_DestroyTexture(mt);
+                SDL_FreeSurface(ms);
+            }
         }
 
         SDL_Surface* nameSurf = TTF_RenderText_Blended(font, bgState->defaultBgNames[i].c_str(), white);
@@ -403,14 +420,18 @@ inline int renderDefaultBackgroundLibrary(SDL_Renderer* renderer, TTF_Font* font
         }
     }
 
-    if (selectedIndex >= 0 && bgState->defaultBgs[selectedIndex] != nullptr) {
-        bgState->currentBg = bgState->defaultBgs[selectedIndex];
-        bgState->currentBgName = bgState->defaultBgNames[selectedIndex];
+    if (selectedIndex >= 0) {
+        if (bgState->defaultBgs[selectedIndex] != nullptr) {
+            bgState->currentBg     = bgState->defaultBgs[selectedIndex];
+            bgState->currentBgName = bgState->defaultBgNames[selectedIndex];
+        } else {
+            selectedIndex = -1;
+        }
     }
     return selectedIndex;
 }
 
-inline bool loadBackgroundFromSystem(SDL_Renderer* renderer, BackgroundState* bgState, int, int) {
+inline bool loadBackgroundFromSystem(BackgroundState* bgState, int, int) {
     char filePath[MAX_PATH] = {0};
     OPENFILENAMEA ofn = {};
     ofn.lStructSize = sizeof(ofn);
@@ -443,10 +464,10 @@ inline bool loadBackgroundFromSystem(SDL_Renderer* renderer, BackgroundState* bg
     return true;
 }
 
-inline void initImageEditor(SDL_Renderer* renderer, ImageEditorState* editor,
+inline void initImageEditor(ImageEditorState* editor,
                             int canvasW, int canvasH) {
     editor->canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
-                                        SDL_TEXTUREACCESS_TARGET, canvasW, canvasH);
+                                       SDL_TEXTUREACCESS_TARGET, canvasW, canvasH);
     SDL_SetRenderTarget(renderer, editor->canvas);
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_RenderClear(renderer);
@@ -461,8 +482,9 @@ inline void initImageEditor(SDL_Renderer* renderer, ImageEditorState* editor,
     editor->active = true;
 }
 
-inline void editorDrawCircle(SDL_Renderer* renderer, SDL_Texture* canvas,
+inline void editorDrawCircle(SDL_Texture* canvas,
                              int cx, int cy, int radius, SDL_Color color) {
+
     SDL_SetRenderTarget(renderer, canvas);
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     for (int dy = -radius; dy <= radius; dy++) {
@@ -471,10 +493,9 @@ inline void editorDrawCircle(SDL_Renderer* renderer, SDL_Texture* canvas,
                 SDL_RenderDrawPoint(renderer, cx + dx, cy + dy);
         }
     }
-    SDL_SetRenderTarget(renderer, nullptr);
 }
 
-inline void handleImageEditorMouse(SDL_Renderer* renderer, ImageEditorState* editor,
+inline void handleImageEditorMouse(ImageEditorState* editor,
                                    SDL_Event* event, SDL_Rect canvasRect) {
     if (!editor->active) return;
 
@@ -485,7 +506,7 @@ inline void handleImageEditorMouse(SDL_Renderer* renderer, ImageEditorState* edi
             editor->isDrawing = true;
             editor->lastX = mx;
             editor->lastY = my;
-            editorDrawCircle(renderer, editor->canvas, mx, my, editor->penSize, editor->penColor);
+            editorDrawCircle(editor->canvas, mx, my, editor->penSize, editor->penColor);
         }
     }
     if (event->type == SDL_MOUSEMOTION && editor->isDrawing) {
@@ -497,7 +518,7 @@ inline void handleImageEditorMouse(SDL_Renderer* renderer, ImageEditorState* edi
             for (int s = 0; s <= steps; s++) {
                 const int px = x0 + (mx - x0) * s / steps;
                 const int py = y0 + (my - y0) * s / steps;
-                editorDrawCircle(renderer, editor->canvas, px, py, editor->penSize, editor->penColor);
+                editorDrawCircle( editor->canvas, px, py, editor->penSize, editor->penColor);
             }
             editor->lastX = mx;
             editor->lastY = my;
@@ -507,12 +528,12 @@ inline void handleImageEditorMouse(SDL_Renderer* renderer, ImageEditorState* edi
         editor->isDrawing = false;
 }
 
-inline void renderImageEditor(SDL_Renderer* renderer, TTF_Font* font,
+inline void renderImageEditor(TTF_Font* font,
                               ImageEditorState* editor, SDL_Rect canvasRect,
                               int mouseX, int mouseY, bool mouseClicked) {
     if (!editor->active) return;
 
-    constexpr SDL_Color white = {255, 255, 255, 255};
+    const SDL_Color white = {255, 255, 255, 255};
 
     SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
     SDL_Rect border = {canvasRect.x - 2, canvasRect.y - 2,
@@ -522,9 +543,9 @@ inline void renderImageEditor(SDL_Renderer* renderer, TTF_Font* font,
 
     const int toolY = canvasRect.y + canvasRect.h + 8, toolX = canvasRect.x;
 
-    constexpr SDL_Color palette[] = {
-        {0, 0, 0, 255}, {255, 0, 0, 255}, {0, 128, 0, 255}, {0, 0, 255, 255},
-        {255, 255, 0, 255}, {255, 165, 0, 255}, {128, 0, 128, 255}, {255, 255, 255, 255}
+    const SDL_Color palette[] = {
+            {0, 0, 0, 255}, {255, 0, 0, 255}, {0, 128, 0, 255}, {0, 0, 255, 255},
+            {255, 255, 0, 255}, {255, 165, 0, 255}, {128, 0, 128, 255}, {255, 255, 255, 255}
     };
     constexpr int paletteCount = 8, swatchSize = 24;
 
@@ -622,7 +643,9 @@ inline void renderImageEditor(SDL_Renderer* renderer, TTF_Font* font,
         mouseX >= cancelBtn.x && mouseX <= cancelBtn.x + cancelBtn.w &&
         mouseY >= cancelBtn.y && mouseY <= cancelBtn.y + cancelBtn.h) {
         editor->confirmed = false;
-        editor->active = false;
+        editor->active    = false;
+        SDL_DestroyTexture(editor->canvas);
+        editor->canvas = nullptr;
     }
 }
 
@@ -648,7 +671,7 @@ inline void initCharacterManager(CharacterManager* mgr) {
     for (auto& c : mgr->characters) c = Character{};
 }
 
-inline int addCharacterFromFile(SDL_Renderer* renderer, CharacterManager* mgr,
+inline int addCharacterFromFile(CharacterManager* mgr,
                                 const std::string& imagePath, const std::string& name) {
     if (mgr->count >= MAX_CHARACTERS) return -1;
 
@@ -663,7 +686,7 @@ inline int addCharacterFromFile(SDL_Renderer* renderer, CharacterManager* mgr,
     SDL_FreeSurface(surf);
     c.x = 100;
     c.y = 100;
-    c.rotation = 0.0f;
+    c.rotation = 90.0f;   // ← was 0.0f
     c.visible = true;
     c.isActive = false;
     c.name = name;
@@ -671,7 +694,7 @@ inline int addCharacterFromFile(SDL_Renderer* renderer, CharacterManager* mgr,
     return idx;
 }
 
-inline int addOrangeSquareCharacter(SDL_Renderer* renderer, CharacterManager* mgr) {
+inline int addOrangeSquareCharacter(CharacterManager* mgr) {
     if (mgr->count >= MAX_CHARACTERS) return -1;
     constexpr int SZ = 100;
     SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, SZ, SZ, 32, SDL_PIXELFORMAT_RGBA8888);
@@ -683,13 +706,13 @@ inline int addOrangeSquareCharacter(SDL_Renderer* renderer, CharacterManager* mg
     SDL_FreeSurface(surf);
     c.width = SZ; c.height = SZ;
     c.x = 100; c.y = 100;
-    c.rotation = 0.0f; c.visible = true; c.isActive = false;
+    c.rotation = 90.0f; c.visible = true; c.isActive = false;
     c.name = "Orange Square";
     mgr->count++;
     return idx;
 }
 
-inline int addCharacterFromSystem(SDL_Renderer* renderer, CharacterManager* mgr) {
+inline int addCharacterFromSystem(CharacterManager* mgr) {
     char filePath[MAX_PATH] = {0};
     OPENFILENAMEA ofn = {};
     ofn.lStructSize = sizeof(ofn);
@@ -707,15 +730,15 @@ inline int addCharacterFromSystem(SDL_Renderer* renderer, CharacterManager* mgr)
     const std::string name = (slashPos != std::string::npos)
                              ? fullPath.substr(slashPos + 1)
                              : fullPath;
-    return addCharacterFromFile(renderer, mgr, fullPath, name);
+    return addCharacterFromFile(mgr, fullPath, name);
 }
 
-inline int addRandomCharacter(SDL_Renderer* renderer, CharacterManager* mgr,
+inline int addRandomCharacter(CharacterManager* mgr,
                               const char** libraryPaths, const char** libraryNames,
                               int librarySize) {
     if (librarySize <= 0) return -1;
     const int pick = rand() % librarySize;
-    return addCharacterFromFile(renderer, mgr, libraryPaths[pick], libraryNames[pick]);
+    return addCharacterFromFile( mgr, libraryPaths[pick], libraryNames[pick]);
 }
 
 inline void setActiveCharacter(CharacterManager* mgr, int index) {
@@ -777,8 +800,8 @@ inline bool deleteCharacter(CharacterManager* mgr, int index) {
     if (index < 0 || index >= mgr->count) return false;
 
     const std::string msg = "Are you sure you want to delete character \""
-                          + mgr->characters[index].name
-                          + "\"?\nThis action cannot be undone.";
+                            + mgr->characters[index].name
+                            + "\"?\nThis action cannot be undone.";
     if (MessageBoxA(nullptr, msg.c_str(), "Delete Character",
                     MB_YESNO | MB_ICONWARNING) != IDYES) return false;
 
@@ -800,13 +823,13 @@ inline bool deleteCharacter(CharacterManager* mgr, int index) {
     return true;
 }
 
-inline void renderCharacterPanel(SDL_Renderer* renderer, TTF_Font* font,
+inline void renderCharacterPanel(TTF_Font* font,
                                  CharacterManager* mgr, SDL_Rect panelRect,
                                  int mouseX, int mouseY, bool mouseClicked) {
-    constexpr SDL_Color panelBg = {25, 25, 25, 240};
-    constexpr SDL_Color activeBdr = {0, 200, 255, 255};
-    constexpr SDL_Color normalBdr = {80, 80, 80, 255};
-    constexpr SDL_Color white = {255, 255, 255, 255};
+    const SDL_Color panelBg = {25, 25, 25, 240};
+    const SDL_Color activeBdr = {0, 200, 255, 255};
+    const SDL_Color normalBdr = {80, 80, 80, 255};
+    const SDL_Color white = {255, 255, 255, 255};
 
     SDL_SetRenderDrawColor(renderer, panelBg.r, panelBg.g, panelBg.b, panelBg.a);
     SDL_RenderFillRect(renderer, &panelRect);
@@ -855,12 +878,12 @@ inline void renderCharacterPanel(SDL_Renderer* renderer, TTF_Font* font,
         }
 
         if (!c.visible) {
-            constexpr SDL_Color hiddenColor = {180, 50, 50, 255};
+            const SDL_Color hiddenColor = {180, 50, 50, 255};
             SDL_Surface* hideSurf = TTF_RenderText_Blended(font, "[hidden]", hiddenColor);
             if (hideSurf) {
                 SDL_Texture* hideTex = SDL_CreateTextureFromSurface(renderer, hideSurf);
                 SDL_Rect hr = {thumbX + thumbSize - hideSurf->w - 2,
-                                thumbY + 2, hideSurf->w, hideSurf->h};
+                               thumbY + 2, hideSurf->w, hideSurf->h};
                 SDL_RenderCopy(renderer, hideTex, nullptr, &hr);
                 SDL_DestroyTexture(hideTex);
                 SDL_FreeSurface(hideSurf);
@@ -875,14 +898,14 @@ inline void renderCharacterPanel(SDL_Renderer* renderer, TTF_Font* font,
     }
 }
 
-inline void renderCharacterSettingsPanel(SDL_Renderer* renderer, TTF_Font* font,
+inline void renderCharacterSettingsPanel(TTF_Font* font,
                                          CharacterManager* mgr, SDL_Rect panelRect,
                                          int mouseX, int mouseY, bool mouseClicked,
                                          bool* requestAddChar, bool* requestRename,
                                          std::string& renameBuffer) {
-    constexpr SDL_Color panelBg = {30, 30, 30, 240};
-    constexpr SDL_Color white = {255, 255, 255, 255};
-    constexpr SDL_Color gray = {160, 160, 160, 255};
+    const SDL_Color panelBg = {30, 30, 30, 240};
+    const SDL_Color white = {255, 255, 255, 255};
+    const SDL_Color gray = {160, 160, 160, 255};
 
     SDL_SetRenderDrawColor(renderer, panelBg.r, panelBg.g, panelBg.b, panelBg.a);
     SDL_RenderFillRect(renderer, &panelRect);
@@ -963,7 +986,7 @@ inline void renderCharacterSettingsPanel(SDL_Renderer* renderer, TTF_Font* font,
     cy += lineH + 4;
 
     const std::string posLabel = "X: " + std::to_string(active.x)
-                               + "    Y: " + std::to_string(active.y);
+                                 + "    Y: " + std::to_string(active.y);
     SDL_Surface* posSurf = TTF_RenderText_Blended(font, posLabel.c_str(), white);
     if (posSurf) {
         SDL_Texture* posTex = SDL_CreateTextureFromSurface(renderer, posSurf);
@@ -975,8 +998,8 @@ inline void renderCharacterSettingsPanel(SDL_Renderer* renderer, TTF_Font* font,
     cy += lineH;
 
     const std::string sizeLabel = "W: " + std::to_string(active.width)
-                                + "   H: " + std::to_string(active.height)
-                                + "   Rot: " + std::to_string(static_cast<int>(active.rotation)) + "deg";
+                                  + "   H: " + std::to_string(active.height)
+                                  + "   Rot: " + std::to_string(static_cast<int>(active.rotation)) + "deg";
     SDL_Surface* sizeSurf = TTF_RenderText_Blended(font, sizeLabel.c_str(), white);
     if (sizeSurf) {
         SDL_Texture* sizeTex = SDL_CreateTextureFromSurface(renderer, sizeSurf);
@@ -1080,9 +1103,9 @@ inline void renderCharacterSettingsPanel(SDL_Renderer* renderer, TTF_Font* font,
     const char* visLabel = active.visible ? "Hide Character" : "Show Character";
     SDL_Rect visBtn = {cx, cy, 130, 24};
     SDL_SetRenderDrawColor(renderer,
-                            active.visible ? 120 : 30,
-                            active.visible ? 80 : 120,
-                            80, 255);
+                           active.visible ? 120 : 30,
+                           active.visible ? 80 : 120,
+                           80, 255);
     SDL_RenderFillRect(renderer, &visBtn);
     SDL_Surface* visSurf = TTF_RenderText_Blended(font, visLabel, white);
     if (visSurf) {
@@ -1117,7 +1140,7 @@ inline void renderCharacterSettingsPanel(SDL_Renderer* renderer, TTF_Font* font,
     }
 }
 
-inline void renderAllCharacters(SDL_Renderer* renderer, CharacterManager* mgr) {
+inline void renderAllCharacters(CharacterManager* mgr) {
     for (int i = 0; i < mgr->count; i++) {
         Character& c = mgr->characters[i];
         if (!c.visible || c.texture == nullptr) continue;
@@ -1157,6 +1180,100 @@ inline void destroyBackgroundState(BackgroundState* bgState) {
     if (!isDefault && bgState->currentBg != nullptr)
         SDL_DestroyTexture(bgState->currentBg);
     bgState->currentBg = nullptr;
+}
+
+static int MONITOR_W = 0, MONITOR_H = 0;
+static int WINDOW_W = 0, WINDOW_H = 0, WINDOW_X = 0, WINDOW_Y = 20;
+static int TOOLBAR_H = 0;
+static int STAGE_W = 500, STAGE_H = 400, STAGE_X = 0, STAGE_Y = 0;
+static int SETT_PANEL_W = 500, SETT_PANEL_H = 0, SETT_PANEL_X = 0, SETT_PANEL_Y = 400;
+static int CHAR_PANEL_W = 0, CHAR_PANEL_X = 0, CHAR_PANEL_Y = 0;
+static SDL_Rect BG_BAR_RECT = {};
+static SDL_Rect CHAR_BAR_RECT = {};
+static int EDITOR_CANVAS_W = 760, EDITOR_CANVAS_H = 480, EDITOR_CANVAS_X = 0, EDITOR_CANVAS_Y = 0;
+static SDL_Rect EDITOR_CANVAS_RECT = {};
+
+static bool simpleTextInputDialog(TTF_Font* font,
+                                  const std::string& prompt, std::string& outBuf) {
+    SDL_StartTextInput();
+    std::string text = outBuf;
+    bool done = false, confirm = false;
+
+    while (!done) {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) { done = true; break; }
+            if (e.type == SDL_KEYDOWN) {
+                if (e.key.keysym.sym == SDLK_RETURN) { confirm = true; done = true; }
+                else if (e.key.keysym.sym == SDLK_ESCAPE) { done = true; }
+                else if (e.key.keysym.sym == SDLK_BACKSPACE) { if (!text.empty()) text.pop_back(); }
+            }
+            if (e.type == SDL_TEXTINPUT) { text += e.text.text; }
+        }
+
+        const SDL_Color white = {255, 255, 255, 255}, cyan = {100, 220, 255, 255}, hint = {150, 150, 150, 255};
+
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 160);
+        SDL_Rect overlay = {0, 0, WINDOW_W, WINDOW_H};
+        SDL_RenderFillRect(renderer, &overlay);
+
+        SDL_Rect box = {WINDOW_W / 2 - 220, WINDOW_H / 2 - 60, 440, 120};
+        SDL_SetRenderDrawColor(renderer, 40, 40, 60, 255);
+        SDL_RenderFillRect(renderer, &box);
+        SDL_SetRenderDrawColor(renderer, 100, 100, 200, 255);
+        SDL_RenderDrawRect(renderer, &box);
+
+        SDL_Surface* ps = TTF_RenderText_Blended(font, prompt.c_str(), white);
+        if (ps) {
+            SDL_Texture* pt = SDL_CreateTextureFromSurface(renderer, ps);
+            SDL_Rect pr = {box.x + 10, box.y + 10, ps->w, ps->h};
+            SDL_RenderCopy(renderer, pt, nullptr, &pr);
+            SDL_DestroyTexture(pt);
+            SDL_FreeSurface(ps);
+        }
+
+        SDL_Rect field = {box.x + 10, box.y + 50, box.w - 20, 28};
+        SDL_SetRenderDrawColor(renderer, 20, 20, 40, 255);
+        SDL_RenderFillRect(renderer, &field);
+        SDL_SetRenderDrawColor(renderer, 80, 80, 160, 255);
+        SDL_RenderDrawRect(renderer, &field);
+
+        const std::string display = text + "|";
+        SDL_Surface* ts = TTF_RenderText_Blended(font, display.c_str(), cyan);
+        if (ts) {
+            SDL_Texture* tt = SDL_CreateTextureFromSurface(renderer, ts);
+            SDL_Rect tr = {field.x + 5, field.y + 4, ts->w, ts->h};
+            SDL_RenderCopy(renderer, tt, nullptr, &tr);
+            SDL_DestroyTexture(tt);
+            SDL_FreeSurface(ts);
+        }
+
+        SDL_Surface* hs = TTF_RenderText_Blended(font, "Enter = confirm    Esc = cancel", hint);
+        if (hs) {
+            SDL_Texture* ht = SDL_CreateTextureFromSurface(renderer, hs);
+            SDL_Rect hr = {box.x + 10, box.y + 90, hs->w, hs->h};
+            SDL_RenderCopy(renderer, ht, nullptr, &hr);
+            SDL_DestroyTexture(ht);
+            SDL_FreeSurface(hs);
+        }
+
+        SDL_RenderPresent(renderer);
+    }
+
+    SDL_StopTextInput();
+    if (confirm) outBuf = text;
+    return confirm;
+}
+
+static const char* LIBRARY_PATHS[] = {"assets/characters/cat.png", "assets/characters/dog.png", "assets/characters/robot.png"};
+static const char* LIBRARY_NAMES[] = {"Cat", "Dog", "Robot"};
+static const int LIBRARY_SIZE = 3;
+
+static void renderStageBorder() {
+    SDL_SetRenderDrawColor(renderer, 60, 60, 80, 255);
+    SDL_Rect border = {STAGE_X - 1, STAGE_Y - 1, STAGE_W + 2, STAGE_H + 2};
+    SDL_RenderDrawRect(renderer, &border);
 }
 
 #endif
