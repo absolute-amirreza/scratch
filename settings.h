@@ -52,13 +52,13 @@ struct ImageEditorState {
 };
 
 inline void setActiveCharacter(CharacterManager* mgr, int index);
-inline int  addOrangeSquareCharacter(SDL_Renderer* renderer, CharacterManager* mgr);
+inline int  addOrangeSquareCharacter(CharacterManager* mgr);
 
 inline void initCharacterBarState(CharacterBarState* cb) {
     cb->panelOpen = false;
 }
 
-inline void renderCharacterBar(SDL_Renderer* renderer, TTF_Font* font,
+inline void renderCharacterBar(TTF_Font* font,
                                CharacterBarState* cb, SDL_Rect barRect) {
     const SDL_Color white = {255, 255, 255, 255};
 
@@ -94,7 +94,7 @@ inline void handleCharacterBarClick(CharacterBarState* cb, SDL_Rect barRect,
     }
 }
 
-inline void renderCharacterBarPanel(SDL_Renderer* renderer, TTF_Font* font,
+inline void renderCharacterBarPanel( TTF_Font* font,
                                     CharacterManager* mgr,
                                     int panelX, int panelY,
                                     int mouseX, int mouseY, bool mouseClicked) {
@@ -201,7 +201,7 @@ inline void toggleBackgroundMenu(BackgroundMenuState* menu) {
     }
 }
 
-inline void renderBackgroundBar(SDL_Renderer* renderer, TTF_Font* font,
+inline void renderBackgroundBar(TTF_Font* font,
                                 BackgroundMenuState* menu, BackgroundState* bgState,
                                 SDL_Rect barRect) {
     const SDL_Color white = {255, 255, 255, 255};
@@ -321,7 +321,7 @@ inline int handleBackgroundBarClick(BackgroundMenuState* menu, SDL_Rect barRect,
     return 0;
 }
 
-inline void renderBackground(SDL_Renderer* renderer, BackgroundState* bgState,
+inline void renderBackground(BackgroundState* bgState,
                              SDL_Rect stageRect) {
     SDL_SetRenderDrawColor(renderer, 130, 130, 130, 255);
     SDL_RenderFillRect(renderer, &stageRect);
@@ -329,7 +329,7 @@ inline void renderBackground(SDL_Renderer* renderer, BackgroundState* bgState,
         SDL_RenderCopy(renderer, bgState->currentBg, nullptr, &stageRect);
 }
 
-inline void loadDefaultBackgrounds(SDL_Renderer* renderer, BackgroundState* bgState,
+inline void loadDefaultBackgrounds(BackgroundState* bgState,
                                    const std::string& path1, const std::string& name1,
                                    const std::string& path2, const std::string& name2) {
     // Helper: try the given path first, then "../" + path (for builds run from cmake-build-debug).
@@ -356,7 +356,7 @@ inline void loadDefaultBackgrounds(SDL_Renderer* renderer, BackgroundState* bgSt
     if (bgState->currentBgName.empty()) bgState->currentBgName = "None";
 }
 
-inline int renderDefaultBackgroundLibrary(SDL_Renderer* renderer, TTF_Font* font,
+inline int renderDefaultBackgroundLibrary(TTF_Font* font,
                                           BackgroundState* bgState,
                                           int panelX, int panelY,
                                           int mouseX, int mouseY, bool mouseClicked,
@@ -431,7 +431,7 @@ inline int renderDefaultBackgroundLibrary(SDL_Renderer* renderer, TTF_Font* font
     return selectedIndex;
 }
 
-inline bool loadBackgroundFromSystem(SDL_Renderer* renderer, BackgroundState* bgState, int, int) {
+inline bool loadBackgroundFromSystem(BackgroundState* bgState, int, int) {
     char filePath[MAX_PATH] = {0};
     OPENFILENAMEA ofn = {};
     ofn.lStructSize = sizeof(ofn);
@@ -464,7 +464,7 @@ inline bool loadBackgroundFromSystem(SDL_Renderer* renderer, BackgroundState* bg
     return true;
 }
 
-inline void initImageEditor(SDL_Renderer* renderer, ImageEditorState* editor,
+inline void initImageEditor(ImageEditorState* editor,
                             int canvasW, int canvasH) {
     editor->canvas = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
                                        SDL_TEXTUREACCESS_TARGET, canvasW, canvasH);
@@ -482,7 +482,7 @@ inline void initImageEditor(SDL_Renderer* renderer, ImageEditorState* editor,
     editor->active = true;
 }
 
-inline void editorDrawCircle(SDL_Renderer* renderer, SDL_Texture* canvas,
+inline void editorDrawCircle(SDL_Texture* canvas,
                              int cx, int cy, int radius, SDL_Color color) {
 
     SDL_SetRenderTarget(renderer, canvas);
@@ -495,7 +495,7 @@ inline void editorDrawCircle(SDL_Renderer* renderer, SDL_Texture* canvas,
     }
 }
 
-inline void handleImageEditorMouse(SDL_Renderer* renderer, ImageEditorState* editor,
+inline void handleImageEditorMouse(ImageEditorState* editor,
                                    SDL_Event* event, SDL_Rect canvasRect) {
     if (!editor->active) return;
 
@@ -506,7 +506,7 @@ inline void handleImageEditorMouse(SDL_Renderer* renderer, ImageEditorState* edi
             editor->isDrawing = true;
             editor->lastX = mx;
             editor->lastY = my;
-            editorDrawCircle(renderer, editor->canvas, mx, my, editor->penSize, editor->penColor);
+            editorDrawCircle(editor->canvas, mx, my, editor->penSize, editor->penColor);
         }
     }
     if (event->type == SDL_MOUSEMOTION && editor->isDrawing) {
@@ -518,7 +518,7 @@ inline void handleImageEditorMouse(SDL_Renderer* renderer, ImageEditorState* edi
             for (int s = 0; s <= steps; s++) {
                 const int px = x0 + (mx - x0) * s / steps;
                 const int py = y0 + (my - y0) * s / steps;
-                editorDrawCircle(renderer, editor->canvas, px, py, editor->penSize, editor->penColor);
+                editorDrawCircle( editor->canvas, px, py, editor->penSize, editor->penColor);
             }
             editor->lastX = mx;
             editor->lastY = my;
@@ -528,7 +528,7 @@ inline void handleImageEditorMouse(SDL_Renderer* renderer, ImageEditorState* edi
         editor->isDrawing = false;
 }
 
-inline void renderImageEditor(SDL_Renderer* renderer, TTF_Font* font,
+inline void renderImageEditor(TTF_Font* font,
                               ImageEditorState* editor, SDL_Rect canvasRect,
                               int mouseX, int mouseY, bool mouseClicked) {
     if (!editor->active) return;
@@ -671,7 +671,7 @@ inline void initCharacterManager(CharacterManager* mgr) {
     for (auto& c : mgr->characters) c = Character{};
 }
 
-inline int addCharacterFromFile(SDL_Renderer* renderer, CharacterManager* mgr,
+inline int addCharacterFromFile(CharacterManager* mgr,
                                 const std::string& imagePath, const std::string& name) {
     if (mgr->count >= MAX_CHARACTERS) return -1;
 
@@ -686,7 +686,7 @@ inline int addCharacterFromFile(SDL_Renderer* renderer, CharacterManager* mgr,
     SDL_FreeSurface(surf);
     c.x = 100;
     c.y = 100;
-    c.rotation = 0.0f;
+    c.rotation = 90.0f;   // ← was 0.0f
     c.visible = true;
     c.isActive = false;
     c.name = name;
@@ -694,7 +694,7 @@ inline int addCharacterFromFile(SDL_Renderer* renderer, CharacterManager* mgr,
     return idx;
 }
 
-inline int addOrangeSquareCharacter(SDL_Renderer* renderer, CharacterManager* mgr) {
+inline int addOrangeSquareCharacter(CharacterManager* mgr) {
     if (mgr->count >= MAX_CHARACTERS) return -1;
     constexpr int SZ = 100;
     SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, SZ, SZ, 32, SDL_PIXELFORMAT_RGBA8888);
@@ -706,13 +706,13 @@ inline int addOrangeSquareCharacter(SDL_Renderer* renderer, CharacterManager* mg
     SDL_FreeSurface(surf);
     c.width = SZ; c.height = SZ;
     c.x = 100; c.y = 100;
-    c.rotation = 0.0f; c.visible = true; c.isActive = false;
+    c.rotation = 90.0f; c.visible = true; c.isActive = false;
     c.name = "Orange Square";
     mgr->count++;
     return idx;
 }
 
-inline int addCharacterFromSystem(SDL_Renderer* renderer, CharacterManager* mgr) {
+inline int addCharacterFromSystem(CharacterManager* mgr) {
     char filePath[MAX_PATH] = {0};
     OPENFILENAMEA ofn = {};
     ofn.lStructSize = sizeof(ofn);
@@ -730,15 +730,15 @@ inline int addCharacterFromSystem(SDL_Renderer* renderer, CharacterManager* mgr)
     const std::string name = (slashPos != std::string::npos)
                              ? fullPath.substr(slashPos + 1)
                              : fullPath;
-    return addCharacterFromFile(renderer, mgr, fullPath, name);
+    return addCharacterFromFile(mgr, fullPath, name);
 }
 
-inline int addRandomCharacter(SDL_Renderer* renderer, CharacterManager* mgr,
+inline int addRandomCharacter(CharacterManager* mgr,
                               const char** libraryPaths, const char** libraryNames,
                               int librarySize) {
     if (librarySize <= 0) return -1;
     const int pick = rand() % librarySize;
-    return addCharacterFromFile(renderer, mgr, libraryPaths[pick], libraryNames[pick]);
+    return addCharacterFromFile( mgr, libraryPaths[pick], libraryNames[pick]);
 }
 
 inline void setActiveCharacter(CharacterManager* mgr, int index) {
@@ -823,7 +823,7 @@ inline bool deleteCharacter(CharacterManager* mgr, int index) {
     return true;
 }
 
-inline void renderCharacterPanel(SDL_Renderer* renderer, TTF_Font* font,
+inline void renderCharacterPanel(TTF_Font* font,
                                  CharacterManager* mgr, SDL_Rect panelRect,
                                  int mouseX, int mouseY, bool mouseClicked) {
     const SDL_Color panelBg = {25, 25, 25, 240};
@@ -898,7 +898,7 @@ inline void renderCharacterPanel(SDL_Renderer* renderer, TTF_Font* font,
     }
 }
 
-inline void renderCharacterSettingsPanel(SDL_Renderer* renderer, TTF_Font* font,
+inline void renderCharacterSettingsPanel(TTF_Font* font,
                                          CharacterManager* mgr, SDL_Rect panelRect,
                                          int mouseX, int mouseY, bool mouseClicked,
                                          bool* requestAddChar, bool* requestRename,
@@ -1140,7 +1140,7 @@ inline void renderCharacterSettingsPanel(SDL_Renderer* renderer, TTF_Font* font,
     }
 }
 
-inline void renderAllCharacters(SDL_Renderer* renderer, CharacterManager* mgr) {
+inline void renderAllCharacters(CharacterManager* mgr) {
     for (int i = 0; i < mgr->count; i++) {
         Character& c = mgr->characters[i];
         if (!c.visible || c.texture == nullptr) continue;
@@ -1193,7 +1193,7 @@ static SDL_Rect CHAR_BAR_RECT = {};
 static int EDITOR_CANVAS_W = 760, EDITOR_CANVAS_H = 480, EDITOR_CANVAS_X = 0, EDITOR_CANVAS_Y = 0;
 static SDL_Rect EDITOR_CANVAS_RECT = {};
 
-static bool simpleTextInputDialog(SDL_Renderer* renderer, TTF_Font* font,
+static bool simpleTextInputDialog(TTF_Font* font,
                                   const std::string& prompt, std::string& outBuf) {
     SDL_StartTextInput();
     std::string text = outBuf;
@@ -1270,7 +1270,7 @@ static const char* LIBRARY_PATHS[] = {"assets/characters/cat.png", "assets/chara
 static const char* LIBRARY_NAMES[] = {"Cat", "Dog", "Robot"};
 static const int LIBRARY_SIZE = 3;
 
-static void renderStageBorder(SDL_Renderer* renderer) {
+static void renderStageBorder() {
     SDL_SetRenderDrawColor(renderer, 60, 60, 80, 255);
     SDL_Rect border = {STAGE_X - 1, STAGE_Y - 1, STAGE_W + 2, STAGE_H + 2};
     SDL_RenderDrawRect(renderer, &border);

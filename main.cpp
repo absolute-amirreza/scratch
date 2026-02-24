@@ -1,7 +1,6 @@
-#include "code1.h"
+#include "run.h"
 #include "settings.h"
 #include "costum.h"
-#include "run.h"
 #include <ctime>
 #include <cstdlib>
 
@@ -107,9 +106,13 @@ int main(int argc, char* argv[])
     initCharacterBarState(&charBar);
     initCostumesMenu(&costumesMenu);
 
+    // Connect global execution pointers to the local managers
+    g_charMgr = &charMgr;
+    g_bgState  = &bgState;
+
     SDL_SetRenderTarget(renderer, nullptr);
 
-    loadDefaultBackgrounds(renderer, &bgState,
+    loadDefaultBackgrounds(&bgState,
                            "assets/backgrounds/abandoned_class.png", "Abandoned Class",
                            "assets/backgrounds/black_forest.png",    "Black Forest");
 
@@ -173,7 +176,7 @@ int main(int argc, char* argv[])
     SDL_RenderPresent(renderer);
 
     {
-        int defIdx = addOrangeSquareCharacter(renderer, &charMgr);
+        int defIdx = addOrangeSquareCharacter(&charMgr);
         if (defIdx >= 0)
         {
             setActiveCharacter(&charMgr, defIdx);
@@ -253,7 +256,7 @@ int main(int argc, char* argv[])
             }
 
             if (imgEditor.active)
-                handleImageEditorMouse(renderer, &imgEditor, &e, EDITOR_CANVAS_RECT);
+                handleImageEditorMouse(&imgEditor, &e, EDITOR_CANVAS_RECT);
 
             switch (e.type)
             {
@@ -510,8 +513,25 @@ int main(int argc, char* argv[])
                                 SDL_SetRenderTarget(renderer, nullptr);
                                 currentTab = msx(e.button.x, isSprite);
                             }
-                            else if (cligri(e.button.x, e.button.y)) {}
+                            else if (cligri(e.button.x, e.button.y) ||
+                                     clirec(e.button.x, e.button.y)) {}
                         }
+                            // ── sprite-click: fire "when this sprite clicked" ──
+                        else if (e.button.y >= STAGE_Y && e.button.y < STAGE_Y + STAGE_H &&
+                                 e.button.x >= STAGE_X && e.button.x < STAGE_X + STAGE_W)
+                        {
+                            // Check if we clicked directly on a character
+                            for (int ci = 0; ci < charMgr.count; ci++) {
+                                Character& cc = charMgr.characters[ci];
+                                if (!cc.visible) continue;
+                                if (e.button.x >= cc.x && e.button.x < cc.x + cc.width &&
+                                    e.button.y >= cc.y && e.button.y < cc.y + cc.height) {
+                                    notifySpriteClicked(ci);
+                                    break;
+                                }
+                            }
+                        }
+
                     }
                     else if (e.button.button == SDL_BUTTON_RIGHT)
                     {
@@ -576,6 +596,8 @@ int main(int argc, char* argv[])
                     break;
 
                 case SDL_TEXTINPUT:
+                    if (g_askActive && !g_askDone)
+                        g_askBuf += e.text.text;
                     if (myval)
                     {
                         SDL_SetRenderTarget(renderer, working->texture);
@@ -600,6 +622,13 @@ int main(int argc, char* argv[])
                     break;
 
                 case SDL_KEYDOWN:
+                    notifyKeyDown(e.key.keysym.scancode);
+                    notifyKeyEvent(e.key.keysym.scancode);
+                    if (g_askActive && e.key.keysym.sym == SDLK_BACKSPACE && !g_askBuf.empty())
+                        g_askBuf.pop_back();
+                    if (g_askActive && e.key.keysym.sym == SDLK_RETURN) {
+                        g_askDone = true;
+                    }
                     if (myval)
                     {
                         SDL_SetRenderTarget(renderer, working->texture);
@@ -648,6 +677,9 @@ int main(int argc, char* argv[])
                         }
                     }
                     break;
+                case SDL_KEYUP:
+                    notifyKeyUp(e.key.keysym.scancode);
+                    break;
 
                 default:
                     break;
@@ -663,29 +695,35 @@ int main(int argc, char* argv[])
         if (execute())
         {
             change_e = true;
-            SDL_SetRenderTarget(renderer, run);
         }
+        SDL_SetRenderTarget(renderer, nullptr);
 
         if (!imgEditor.active && !costumesMenu.active)
         {
             if (mouseX >= STAGE_X && mouseX < STAGE_X + STAGE_W &&
                 mouseY >= STAGE_Y && mouseY < STAGE_Y + STAGE_H)
             {
-                handleCharacterDrag(&charMgr, mouseX, mouseY, mouseDown, mouseJustPressed, &dragIndex);
+                handleCharacterDrag(&charMgr, mouseX, mouseY, mouseDown,
+                                    mouseJustPressed, &dragIndex);
+                if (mouseDown && dragIndex >= 0 && dragIndex < (int)sp.size()) {
+                    sp[dragIndex].x = charMgr.characters[dragIndex].x;
+                    sp[dragIndex].y = charMgr.characters[dragIndex].y;
+                }
             }
         }
 
-        if (mouseClicked && !imgEditor.active && !costumesMenu.active)
+
+            if (mouseClicked && !imgEditor.active && !costumesMenu.active)
         {
             int bgAction = handleBackgroundBarClick(&bgMenu, BG_BAR_RECT, mouseX, mouseY);
             if (bgAction == 2)
             {
-                loadBackgroundFromSystem(renderer, &bgState, WINDOW_W, WINDOW_H);
+                loadBackgroundFromSystem(&bgState, WINDOW_W, WINDOW_H);
                 bgMenu.menuOpen = false;
             }
             if (bgAction == 3)
             {
-                initImageEditor(renderer, &imgEditor, EDITOR_CANVAS_W, EDITOR_CANVAS_H);
+                initImageEditor(&imgEditor, EDITOR_CANVAS_W, EDITOR_CANVAS_H);
                 bgMenu.menuOpen = false;
             }
             handleCharacterBarClick(&charBar, CHAR_BAR_RECT, mouseX, mouseY);
@@ -719,15 +757,15 @@ int main(int argc, char* argv[])
             };
 
             if (choice == IDYES)
-                syncNewChar(addCharacterFromSystem(renderer, &charMgr));
+                syncNewChar(addCharacterFromSystem(&charMgr));
             else if (choice == IDNO)
-                syncNewChar(addOrangeSquareCharacter(renderer, &charMgr));
+                syncNewChar(addOrangeSquareCharacter(&charMgr));
         }
 
         if (requestRename && charMgr.activeIndex >= 0)
         {
             requestRename = false;
-            if (simpleTextInputDialog(renderer, font, "Enter new name:", renameBuffer))
+            if (simpleTextInputDialog(font, "Enter new name:", renameBuffer))
                 renameCharacter(&charMgr, charMgr.activeIndex, renameBuffer);
         }
 
@@ -770,16 +808,25 @@ int main(int argc, char* argv[])
             msx(tabX, isSprite);
         }
 
-        if (change_e)
-        {
-            SDL_RenderCopy(renderer, run, nullptr, &ruc);
-            change_e = false;
-        }
 
         SDL_RenderSetClipRect(renderer, &stageClip);
-        renderBackground(renderer, &bgState, stageClip);
-        renderAllCharacters(renderer, &charMgr);
+        renderBackground( &bgState, stageClip);
+        renderAllCharacters(&charMgr);
+        // Always blit the speech-bubble overlay (run) on top of characters.
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+        SDL_RenderCopy(renderer, run, nullptr, &stageClip);
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+        // Render variable monitors for the active character.
+        {
+            int activeIdx = charMgr.activeIndex;
+            const codtxs* activeCod = (activeIdx >= 0 && activeIdx < (int)spco[0].size())
+                                      ? &spco[0][activeIdx] : nullptr;
+            renderVarMonitors(activeCod, activeIdx);
+        }
         SDL_RenderSetClipRect(renderer, nullptr);
+        // Show ask-prompt bar if a script is waiting for user input.
+        if (g_askActive)
+            renderAskPrompt(font, WINDOW_W, WINDOW_H, mouseClicked);
 
         SDL_SetRenderDrawColor(renderer, 60, 60, 80, 255);
         SDL_RenderDrawRect(renderer, &stageBorder);
@@ -799,18 +846,18 @@ int main(int argc, char* argv[])
                 openCostumesMenu(&costumesMenu, renderer, charMgr.activeIndex, WINDOW_W, WINDOW_H);
         }
 
-        renderCharacterSettingsPanel(renderer, font, &charMgr, settRect,
+        renderCharacterSettingsPanel(font, &charMgr, settRect,
                                      mouseX, mouseY, mouseClicked,
                                      &requestAddChar, &requestRename, renameBuffer);
 
-        renderCharacterBar(renderer, font, &charBar, CHAR_BAR_RECT);
-        renderBackgroundBar(renderer, font, &bgMenu, &bgState, BG_BAR_RECT);
+        renderCharacterBar(font, &charBar, CHAR_BAR_RECT);
+        renderBackgroundBar(font, &bgMenu, &bgState, BG_BAR_RECT);
 
         if (charBar.panelOpen)
         {
             int popX = CHAR_BAR_RECT.x - 200;
             int popY = CHAR_BAR_RECT.y;
-            renderCharacterBarPanel(renderer, font, &charMgr, popX, popY,
+            renderCharacterBarPanel(font, &charMgr, popX, popY,
                                     mouseX, mouseY, mouseClicked);
         }
 
@@ -818,7 +865,7 @@ int main(int argc, char* argv[])
         {
             int libX = BG_BAR_RECT.x - 369;
             int libY = BG_BAR_RECT.y + 10 + 32 + 32;
-            int sel  = renderDefaultBackgroundLibrary(renderer, font, &bgState, libX, libY,
+            int sel  = renderDefaultBackgroundLibrary(font, &bgState, libX, libY,
                                                       mouseX, mouseY, mouseClicked,
                                                       WINDOW_W, WINDOW_H);
             if (sel >= 0)
@@ -835,7 +882,7 @@ int main(int argc, char* argv[])
             SDL_Rect full = {0, 0, WINDOW_W, WINDOW_H};
             SDL_RenderFillRect(renderer, &full);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-            renderImageEditor(renderer, font, &imgEditor, EDITOR_CANVAS_RECT,
+            renderImageEditor(font, &imgEditor, EDITOR_CANVAS_RECT,
                               mouseX, mouseY, mouseClicked);
         }
 
@@ -848,7 +895,6 @@ int main(int argc, char* argv[])
         change_c = false;
         SDL_RenderPresent(renderer);
     }
-
     destroyCostumesMenu(&costumesMenu);
     destroyAllCostumes();
 

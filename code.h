@@ -1,4 +1,3 @@
-
 #ifndef SCRATCH_CODE_H
 #define SCRATCH_CODE_H
 #include "event.h"
@@ -320,7 +319,7 @@ vector<block> bclist(int i){
         a13.pn[0]="x position";
         a13.order={70};
         p.push_back(a13);
-        block a14;c(a13);a14.sit=2;a14.b=true;a14.u=a14.d=false;
+        block a14;c(a14);a14.sit=2;a14.b=true;a14.u=a14.d=false;
         a14.pn[0]="y position";
         a14.order={70};
         p.push_back(a14);
@@ -427,7 +426,7 @@ vector<block> bclist(int i){
         block a2;c(a2);a2.sit=0;a2.u=false;a2.d=true;
         a2.pn[0]="when";a2.pn[1]="key pressed";a2.mod[0]="space";
         a2.m[0]={"space","up arrow","down arrow","right arrow","left arrow","any","a","b","c","d","e","f","g","h","i"
-                 ,"j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","0","1","2","3","4","5","6","7","8","9"};
+                ,"j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","0","1","2","3","4","5","6","7","8","9"};
         a2.order={70,20,71};
         p.push_back(a2);
         block a3;c(a3);a3.sit=0;a3.u=false;a3.d=true;

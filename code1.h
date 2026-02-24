@@ -1,4 +1,3 @@
-
 #ifndef SCRATCH_CODE1_H
 #define SCRATCH_CODE1_H
 #include "code.h"
@@ -55,9 +54,13 @@ struct codtxs{
     }
     vector<vector<block*>>data;
     vector<int>exen;vector<bool>exeb;
-    void fill(){
-        for(int i=0;i<data.size();i++){exen.push_back(0);exeb.push_back(false);}
-    }
+    vector<Uint32>waitT;
+    vector<int>hofIdx;
+    vector<int>repeatCnt;
+
+    // Keep execution-state vectors in sync with data.
+    // Call this whenever you need a guaranteed sync (e.g. before iterating).
+
     p shart(vector<block*> px,vector<block*>bp){
         if(bp[0]->u&&bp[bp.size()-1]->d){
             for(int i=0;i<px.size();i++){
@@ -229,7 +232,13 @@ struct codtxs{
                         i->r.y+=yz;SDL_RenderCopy(renderer,i->blu, nullptr,&i->r);
                     }
                 }
+                // ── FIX: push a matching execution-state slot for the new script ──
                 data.push_back(bbc);
+                exen.push_back(0);
+                exeb.push_back(false);
+                waitT.push_back(0);
+                hofIdx.push_back(0);
+                repeatCnt.push_back(-1);
             }
         }
     }
