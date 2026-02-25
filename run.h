@@ -17,38 +17,27 @@ vector<BackgroundState> co;
 CharacterManager* g_charMgr = nullptr;
 BackgroundState*  g_bgState  = nullptr;
 
-// ── Global execution state ──────────────────────────────────────────────────
-// Per-block maps (key = block pointer) so nested control blocks never
-// share each other's counters.
-static map<const block*, Uint32> g_blkWaitT;    // wait deadline (ms)
-static map<const block*, int>    g_blkHofIdx;    // child cursor inside hof[]
-static map<const block*, int>    g_blkRepCnt;    // repeat counter / if phase
+static map<const block*, Uint32> g_blkWaitT;
+static map<const block*, int>    g_blkHofIdx;
+static map<const block*, int>    g_blkRepCnt;
 
-// Keyboard state indexed by SDL_Scancode
 static bool g_keyState[512] = {};
 
-// User-created variables (name → string value; converted to double on demand)
 static map<string, string> g_vars;
 
-// Ask / answer
 static bool   g_askActive = false;  // currently waiting for user input
 static bool   g_askDone   = false;  // user pressed Enter
 static string g_askBuf;             // typed text
 static string g_answer;             // result of last ask
 static Uint32 g_timerBase = 0;      // for "timer" reporter
 
-// ── Forward declarations ────────────────────────────────────────────────────
 struct dxd { int i{}; int idx{}; };
 
-// Returns true if slot x in block px currently has a reporter (sit=2) plugged in.
-// A reporter is plugged when the order entry for that slot changed from 9x → 8x.
 static bool hasReporter(const block* px, int x) {
     for (int o : px->order) if (o/10 == 8 && o%10 == x) return true;
     return false;
 }
 
-// Returns true if condition slot x has a condition (sit=1) block plugged in.
-// A condition is plugged when the order entry changed from 4x → 3x.
 static bool hasCondition(const block* px, int x) {
     for (int o : px->order) if (o/10 == 3 && o%10 == x) return true;
     return false;
@@ -63,7 +52,7 @@ void doBroadcast(const string& msgName);
 static void stopAll();
 static void ensureVectors(codtxs& cod);
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+
 static double numv(const string& s) {
     if (s.empty()) return 0.0;
     try { return stod(s); } catch (...) { return 0.0; }
@@ -84,7 +73,6 @@ static void ensureVectors(codtxs& cod) {
     }
 }
 
-// ── SDL_Scancode from Scratch key name ──────────────────────────────────────
 static SDL_Scancode keyNameToScancode(const string& k) {
     if (k == "space")       return SDL_SCANCODE_SPACE;
     if (k == "up arrow")    return SDL_SCANCODE_UP;
@@ -109,7 +97,6 @@ static bool isKeyDown(const string& k) {
     return sc != SDL_SCANCODE_UNKNOWN && sc < 512 && g_keyState[sc];
 }
 
-// ── Called from main's event loop ───────────────────────────────────────────
 void notifyKeyDown(SDL_Scancode sc) { if (sc < 512) g_keyState[sc] = true; }
 void notifyKeyUp  (SDL_Scancode sc) { if (sc < 512) g_keyState[sc] = false; }
 
@@ -137,7 +124,6 @@ void notifyKeyEvent(SDL_Scancode sc) {
     }
 }
 
-// Fire "when this sprite clicked" for character at index charIdx.
 void notifySpriteClicked(int charIdx) {
     if (charIdx < 0 || charIdx >= (int)spco[0].size()) return;
     codtxs& cod = spco[0][charIdx];
@@ -151,7 +137,6 @@ void notifySpriteClicked(int charIdx) {
     }
 }
 
-// ── stopAll ──────────────────────────────────────────────────────────────────
 static void stopAll() {
     for (int i = 0; i < 2; i++)
         for (auto& cod : spco[i])
@@ -165,7 +150,6 @@ static void stopAll() {
     g_askActive = g_askDone = false;
 }
 
-// ── doBroadcast ───────────────────────────────────────────────────────────────
 void doBroadcast(const string& msgName) {
     for (int i = 0; i < 2; i++) {
         for (auto& cod : spco[i]) {
@@ -182,17 +166,14 @@ void doBroadcast(const string& msgName) {
     }
 }
 
-// ── evalNum: evaluate a reporter (sit=2) block → double ─────────────────────
 static double evalNum(const block* px, const dxd& sb) {
     if (!px) return 0.0;
     const string& name = px->pn[0];
 
-    // Slot accessors — use vari[] if reporter plugged in, else v[] text
     auto slotN = [&](int x) -> double {
         return (hasReporter(px, x) && px->vari[x]) ? evalNum(px->vari[x], sb) : numv(px->v[x]);
     };
 
-    // ── Operators (color 6) ──
     if (name == "+")  return slotN(0) + slotN(1);
     if (name == "-")  return slotN(0) - slotN(1);
     if (name == "*")  return slotN(0) * slotN(1);
@@ -216,7 +197,7 @@ static double evalNum(const block* px, const dxd& sb) {
         return (idx >= 0 && idx < (int)s.size()) ? (double)s[idx] : 0.0;
     }
 
-    // ── Motion reporters ──
+
     if (sb.i == 0 && sb.idx < (int)sp.size()) {
         const Character& ch = sp[sb.idx];
         if (name == "x position") return (double)(ch.x - STAGE_X);
@@ -225,20 +206,17 @@ static double evalNum(const block* px, const dxd& sb) {
         if (name == "size")       return (double)ch.width;
     }
 
-    // ── Sensing reporters ──
     if (name == "mouse x") { int mx, my; SDL_GetMouseState(&mx, &my); return (double)(mx - STAGE_X); }
     if (name == "mouse y") { int mx, my; SDL_GetMouseState(&mx, &my); return (double)((STAGE_Y + STAGE_H) - my); }
     if (name == "timer")   return (SDL_GetTicks() - g_timerBase) / 1000.0;
     if (name == "loudness")return 0.0; // stub
     if (name == "answer")  { try { return stod(g_answer); } catch(...) { return 0.0; } }
 
-    // ── User variable ──
     if (g_vars.count(name)) return numv(g_vars[name]);
 
     return numv(px->v[0]);
 }
 
-// ── evalStr: evaluate a reporter → string ───────────────────────────────────
 static string evalStr(const block* px, const dxd& sb) {
     if (!px) return "";
     const string& name = px->pn[0];
@@ -261,30 +239,24 @@ static string evalStr(const block* px, const dxd& sb) {
     return dtos(evalNum(px, sb));
 }
 
-// ── evalCond: evaluate a condition (sit=1) block → bool ─────────────────────
 static bool evalCond(const block* px, const dxd& sb) {
     if (!px) return false;
     const string& name = px->pn[0];
 
-    // Numeric input slots (vari[]) for comparison operators
     auto slotN = [&](int x) -> double {
         return (hasReporter(px, x) && px->vari[x]) ? evalNum(px->vari[x], sb) : numv(px->v[x]);
     };
-    // String value of a slot (for = comparison)
     auto slotS = [&](int x) -> string {
         if (hasReporter(px, x) && px->vari[x]) return evalStr(px->vari[x], sb);
         return px->v[x];
     };
-    // Condition input slots (candy[]) for logical operators
     auto slotC = [&](int x) -> bool {
         return (hasCondition(px, x) && px->candy[x]) ? evalCond(px->candy[x], sb) : false;
     };
 
-    // Operators
     if (name == "<")   return slotN(0) < slotN(1);
     if (name == ">")   return slotN(0) > slotN(1);
     if (name == "=")   {
-        // Try numeric equality first, then string
         double a, b;
         try { a = stod(slotS(0)); b = stod(slotS(1)); return a == b; } catch(...) {}
         return slotS(0) == slotS(1);
@@ -293,25 +265,21 @@ static bool evalCond(const block* px, const dxd& sb) {
     if (name == "or")  return slotC(0) || slotC(1);
     if (name == "not") return !slotC(0);
 
-    // Sensing
     if (name == "key" || name == "ket") // "ket" is a typo in bblist
         return isKeyDown(px->mod[0]);
     if (name == "mouse down?")
         return (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON(1)) != 0;
 
-    // Touching — stub (always false for now)
     if (name == "touching" || name == "touching color" || name == "color")
         return false;
 
     return false;
 }
 
-// ── Draw a say/think speech bubble onto the `run` overlay texture ────────────
 static void drawSayBubble(const Character& ch, const string& txt, bool visible) {
     SDL_SetRenderTarget(renderer, run);
     SDL_SetTextureBlendMode(run, SDL_BLENDMODE_BLEND);
 
-    // Position: just above+right of the character, clipped to stage
     int bx = ch.x - STAGE_X + ch.width;
     int bw = max(40, (int)txt.size() * 7 + 10);
     if (bx + bw > STAGE_W) bx = max(0, STAGE_W - bw);
@@ -334,24 +302,18 @@ static void drawSayBubble(const Character& ch, const string& txt, bool visible) 
     SDL_SetRenderTarget(renderer, nullptr);
 }
 
-// ── exebl ────────────────────────────────────────────────────────────────────
 void exebl(int& idx, const block* px, dxd& sb, codtxs& cod, int codIdx) {
     if (!px) { idx++; return; }
     const string& name = px->pn[0];
 
-    // Numeric slot accessor (reporters or plain text)
     auto slotN = [&](int x) -> double {
         return (hasReporter(px, x) && px->vari[x]) ? evalNum(px->vari[x], sb) : numv(px->v[x]);
     };
-    // String slot
     auto slotS = [&](int x) -> string {
         if (hasReporter(px, x) && px->vari[x]) return evalStr(px->vari[x], sb);
         return px->v[x];
     };
 
-    // ────────────────────────────────────────────────────────────────────────
-    // EVENT blocks (color 3) — most are triggers, but broadcast is an action.
-    // ────────────────────────────────────────────────────────────────────────
     if (px->color == color(3)) {
         if (name == "broadcast") {
             doBroadcast(px->mod[0]);
@@ -365,9 +327,6 @@ void exebl(int& idx, const block* px, dxd& sb, codtxs& cod, int codIdx) {
         idx++; return;
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // CONTROL blocks (color 4)
-    // ────────────────────────────────────────────────────────────────────────
     if (px->color == color(4)) {
 
         // wait N seconds
@@ -391,7 +350,6 @@ void exebl(int& idx, const block* px, dxd& sb, codtxs& cod, int codIdx) {
             return;
         }
 
-        // forever
         if (name == "forever") {
             if (px->hofre[0] && !px->hof[0].empty()) {
                 int& hi = g_blkHofIdx[px];
@@ -399,10 +357,9 @@ void exebl(int& idx, const block* px, dxd& sb, codtxs& cod, int codIdx) {
                 exebl(hi, px->hof[0][hi], sb, cod, codIdx);
                 if (hi >= (int)px->hof[0].size()) hi = 0;
             }
-            return; // never advance idx
+            return;
         }
 
-        // repeat N
         if (name == "repeat") {
             bool first = (g_blkRepCnt.find(px) == g_blkRepCnt.end());
             int& rc = g_blkRepCnt[px];
@@ -416,7 +373,6 @@ void exebl(int& idx, const block* px, dxd& sb, codtxs& cod, int codIdx) {
             return;
         }
 
-        // repeat until <condition>
         if (name == "repeat until") {
             if (g_blkRepCnt.find(px) == g_blkRepCnt.end()) { g_blkRepCnt[px] = 1; g_blkHofIdx[px] = 0; }
             int& hi = g_blkHofIdx[px];
@@ -430,7 +386,6 @@ void exebl(int& idx, const block* px, dxd& sb, codtxs& cod, int codIdx) {
             return;
         }
 
-        // if <condition> then [ else ]
         if (name == "if") {
             bool started = (g_blkRepCnt.find(px) != g_blkRepCnt.end());
             int& phase = g_blkRepCnt[px];
@@ -466,7 +421,6 @@ void exebl(int& idx, const block* px, dxd& sb, codtxs& cod, int codIdx) {
             return;
         }
 
-        // stop — handles both "stop all" (bclist) and "stop" mod[0] (bblist)
         if (name == "stop all") { stopAll(); return; }
         if (name == "stop") {
             const string& opt = px->mod[0];
@@ -481,9 +435,6 @@ void exebl(int& idx, const block* px, dxd& sb, codtxs& cod, int codIdx) {
         idx++; return; // unknown control block
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // MOTION blocks (color 0)
-    // ────────────────────────────────────────────────────────────────────────
     if (px->color == color(0)) {
         if (sb.i == 0 && sb.idx < (int)sp.size()) {
             Character& ch = sp[sb.idx];
@@ -526,9 +477,6 @@ void exebl(int& idx, const block* px, dxd& sb, codtxs& cod, int codIdx) {
         idx++; return;
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // LOOKS blocks (color 1)
-    // ────────────────────────────────────────────────────────────────────────
     if (px->color == color(1)) {
         if (sb.i == 0 && sb.idx < (int)sp.size()) {
             Character& ch = sp[sb.idx];
@@ -564,26 +512,17 @@ void exebl(int& idx, const block* px, dxd& sb, codtxs& cod, int codIdx) {
                     }
                     return;
                 }
-                // non-timed say — draw and continue
                 drawSayBubble(ch, txt, true);
             }
-            // Costume / backdrop / layer / effects — stubs that don't crash
-            // (full implementation requires the costume system integration)
         }
         idx++; return;
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // SOUND blocks (color 2) — stubs, don't crash
-    // ────────────────────────────────────────────────────────────────────────
     if (px->color == color(2)) {
         // "change volume by", "set volume to", etc. — no audio engine yet
         idx++; return;
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // SENSING blocks (color 5)
-    // ────────────────────────────────────────────────────────────────────────
     if (px->color == color(5)) {
         if (name == "reset timer") {
             g_timerBase = SDL_GetTicks();
@@ -607,21 +546,13 @@ void exebl(int& idx, const block* px, dxd& sb, codtxs& cod, int codIdx) {
             }
             return;
         }
-        // Sensing reporters and conditions are handled inside evalNum / evalCond.
         idx++; return;
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // OPERATORS blocks (color 6) — sit=1 or sit=2, used as sub-expressions
-    // They cannot be the top-level block of a stack, but guard just in case.
-    // ────────────────────────────────────────────────────────────────────────
+
     if (px->color == color(6)) { idx++; return; }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // VARIABLES blocks (color 7)
-    // ────────────────────────────────────────────────────────────────────────
     if (px->color == color(7)) {
-        // "set <varname> to <value>"
         if (name == "set") {
             string varName = px->mod[0];
             g_vars[varName] = dtos(slotN(0));
@@ -629,13 +560,9 @@ void exebl(int& idx, const block* px, dxd& sb, codtxs& cod, int codIdx) {
         idx++; return;
     }
 
-    // ── My blocks / unknown ──────────────────────────────────────────────────
     idx++;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// execute() — called once per frame from main loop
-// ────────────────────────────────────────────────────────────────────────────
 bool execute() {
     bool b = false;
     for (int i = 0; i < 2; i++) {
@@ -666,7 +593,6 @@ bool execute() {
         }
     }
 
-    // Sync runtime character state back to the editor manager.
     if (g_charMgr) {
         for (int j = 0; j < (int)sp.size() && j < g_charMgr->count; j++) {
             g_charMgr->characters[j].x        = sp[j].x;
@@ -680,12 +606,6 @@ bool execute() {
     return b;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// renderVarMonitors() — draw variable-value boxes on the stage.
-//
-// Call this AFTER renderAllCharacters() in main's render loop.
-// Pass the currently active codtxs so we display the right character's vars.
-// ────────────────────────────────────────────────────────────────────────────
 void renderVarMonitors(const codtxs* cod, int charIdx) {
     if (!cod) return;
 
@@ -693,7 +613,6 @@ void renderVarMonitors(const codtxs* cod, int charIdx) {
     int my = STAGE_Y + STAGE_H - 18;
     const int LINE_H = 18;
 
-    // Helper: draw one "name : value" monitor box
     auto draw = [&](const string& varName, const string& val) {
         string label = varName + ": " + val;
         int w = (int)label.size() * 7 + 8;
@@ -709,13 +628,11 @@ void renderVarMonitors(const codtxs* cod, int charIdx) {
         my -= LINE_H;
     };
 
-    // ── Variables (bol[7]) — user-created ──
     for (const string& vn : cod->bol[7]) {
         string val = g_vars.count(vn) ? g_vars[vn] : "0";
         draw(vn, val);
     }
 
-    // ── Sensing (bol[5]) ──
     for (const string& vn : cod->bol[5]) {
         string val = "0";
         if (vn == "timer")    val = dtos((SDL_GetTicks() - g_timerBase) / 1000.0);
@@ -725,7 +642,6 @@ void renderVarMonitors(const codtxs* cod, int charIdx) {
         draw(vn, val);
     }
 
-    // ── Motion (bol[0]) ──
     if (charIdx >= 0 && charIdx < (int)sp.size()) {
         const Character& ch = sp[charIdx];
         for (const string& vn : cod->bol[0]) {
@@ -737,7 +653,6 @@ void renderVarMonitors(const codtxs* cod, int charIdx) {
         }
     }
 
-    // ── Looks (bol[1]) ──
     if (charIdx >= 0 && charIdx < (int)sp.size()) {
         const Character& ch = sp[charIdx];
         for (const string& vn : cod->bol[1]) {
@@ -747,17 +662,11 @@ void renderVarMonitors(const codtxs* cod, int charIdx) {
         }
     }
 
-    // ── Sound (bol[2]) ──
     for (const string& vn : cod->bol[2]) {
         draw(vn, "100"); // volume stub
     }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// renderAskPrompt() — draw the ask input bar on screen.
-// Returns true while still waiting; false once done.
-// Call this once per frame AFTER execute() if g_askActive.
-// ────────────────────────────────────────────────────────────────────────────
 bool renderAskPrompt(TTF_Font* font, int winW, int winH, bool mouseClicked) {
     if (!g_askActive) return false;
 
@@ -782,9 +691,6 @@ bool renderAskPrompt(TTF_Font* font, int winW, int winH, bool mouseClicked) {
     return true;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// cligri() — green flag clicked
-// ────────────────────────────────────────────────────────────────────────────
 bool cligri(int x, int y) {
     if (x > wt-535 && x < wt-505 && y > 45 && y < 75) {
         sp.clear();
@@ -830,9 +736,6 @@ bool cligri(int x, int y) {
     return false;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// clirec() — red/stop button clicked
-// ────────────────────────────────────────────────────────────────────────────
 bool clirec(int x, int y) {
     if (x > wt-570 && x < wt-540 && y > 45 && y < 75) {
         stopAll();
@@ -848,9 +751,6 @@ bool clirec(int x, int y) {
     return false;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// rust()
-// ────────────────────────────────────────────────────────────────────────────
 void rust() {
     run = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
                             SDL_TEXTUREACCESS_TARGET, 500, 400);
