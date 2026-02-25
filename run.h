@@ -47,7 +47,29 @@ static double evalNum(const block* px, const dxd& sb);
 static bool   evalCond(const block* px, const dxd& sb);
 static string evalStr(const block* px, const dxd& sb);
 
-void exebl(int& idx, const block* px, dxd& sb, codtxs& cod, int codIdx);
+void exebl(int& i, const block* px, dxd& sb) {
+    const string& name = px->pn[0];
+
+    if (name == "play sound") {
+        soundMgr.play(px->v[0]);
+    }
+    else if (name == "play sound until done") {
+        soundMgr.play(px->v[0]);
+        SDL_Delay(500); 
+    }
+    else if (name == "stop all sounds") {
+        soundMgr.stopAll();
+    }
+    else if (name == "change volume by") {
+        soundMgr.changeVolume(stoi(px->v[0]));
+    }
+    else if (name == "set volume to") {
+        soundMgr.setVolume(stoi(px->v[0]));
+    }
+
+    i++;
+}
+;
 void doBroadcast(const string& msgName);
 static void stopAll();
 static void ensureVectors(codtxs& cod);
