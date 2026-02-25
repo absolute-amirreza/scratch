@@ -1183,6 +1183,520 @@ inline void renderCostumesMenu(SDL_Renderer* rend, TTF_Font* font,
     }
 }
 
+struct InlineCostumesState {
+    int ownerIdx = -1;
+
+    SDL_Rect areaRect   = {};   // {0, 80, wt-500, ht-80}
+    SDL_Rect listRect   = {};
+    SDL_Rect canvasRect = {};
+    SDL_Rect toolsRect  = {};
+
+    SDL_Texture* canvas  = nullptr;
+    SDL_Texture* preview = nullptr;
+    int cW = 0, cH = 0;
+
+    CosTool   tool      = CosTool::PEN;
+    SDL_Color palette[3]= { {0,0,0,255}, {220,60,60,255}, {60,120,220,255} };
+    int       colorIdx  = 0;
+    int       sizePx[3] = { 2, 6, 15 };
+    int       sizeIdx   = 0;
+
+    bool isDrawing = false;
+    int  startX=-1, startY=-1;
+    int  lastX =-1, lastY =-1;
+
+    bool        textMode = false;
+    std::string textBuf;
+    int         textPX=0, textPY=0;
+
+    int  cosScroll   = 0;
+    bool renamingCos = false;
+    int  renameIdx   = -1;
+    std::string renameBuf;
+};
+
+inline void destroyInlineCostumes(InlineCostumesState* ic)
+{
+    if (ic->canvas)  { SDL_DestroyTexture(ic->canvas);  ic->canvas  = nullptr; }
+    if (ic->preview) { SDL_DestroyTexture(ic->preview); ic->preview = nullptr; }
+}
+
+inline void initInlineCostumes(InlineCostumesState* ic, SDL_Renderer* rend,
+                               int areaW, int areaH)
+{
+    *ic = InlineCostumesState{};
+
+    const int AY     = 80;
+    const int HDR    = 24;
+    const int LIST_W = 165;
+    const int TOOL_W = 120;
+    const int GAP    = 5;
+
+    ic->areaRect = {0, AY, areaW, areaH};
+
+    ic->cW = std::max(200, areaW - LIST_W - TOOL_W - GAP * 3);
+    ic->cH = std::max(150, areaH - HDR - 8);
+
+    ic->listRect   = {0,                           AY + HDR, LIST_W, areaH - HDR};
+    ic->canvasRect = {LIST_W + GAP,                AY + HDR, ic->cW, ic->cH};
+    ic->toolsRect  = {LIST_W + GAP + ic->cW + GAP, AY,       TOOL_W, areaH};
+
+    ic->canvas  = cos_blankWhite(rend, ic->cW, ic->cH);
+    ic->preview = cos_blankTransparent(rend, ic->cW, ic->cH);
+}
+
+inline void inlineCosLoadOwner(InlineCostumesState* ic, SDL_Renderer* rend, int charIdx)
+{
+    if (ic->ownerIdx == charIdx) return;
+    ic->ownerIdx  = charIdx;
+    ic->cosScroll = 0;
+    if (!ic->canvas) return;
+
+    SDL_SetRenderTarget(rend, ic->canvas);
+    SDL_SetRenderDrawColor(rend, 255, 255, 255, 255);
+    SDL_RenderClear(rend);
+
+    if (charIdx >= 0 && charIdx < MAX_CHARACTERS) {
+        auto& cc = g_cc[charIdx];
+        if (cc.active >= 0 && cc.active < (int)cc.costumes.size()) {
+            auto& cf = cc.costumes[cc.active];
+            if (cf.texture) {
+                float sx = (float)ic->cW / std::max(1, cf.w);
+                float sy = (float)ic->cH / std::max(1, cf.h);
+                float sc = std::min({sx, sy, 1.f});
+                int dw = (int)(cf.w * sc), dh = (int)(cf.h * sc);
+                SDL_Rect dst = {(ic->cW - dw) / 2, (ic->cH - dh) / 2, dw, dh};
+                SDL_RenderCopy(rend, cf.texture, nullptr, &dst);
+            }
+        }
+    }
+    SDL_SetRenderTarget(rend, nullptr);
+}
+
+inline bool handleInlineCostumesEvent(InlineCostumesState* ic, SDL_Renderer* rend,
+                                      TTF_Font* font, SDL_Event* ev,
+                                      CharacterManager* mgr)
+{
+    auto& cr  = ic->canvasRect;
+    SDL_Color col = ic->palette[ic->colorIdx];
+    int       sz  = ic->sizePx[ic->sizeIdx];
+
+    if (ev->type == SDL_MOUSEBUTTONDOWN && ev->button.button == SDL_BUTTON_LEFT)
+    {
+        int mx = ev->button.x, my = ev->button.y;
+        bool onCanvas = mx >= cr.x && mx < cr.x + cr.w &&
+                        my >= cr.y && my < cr.y + cr.h;
+        if (!onCanvas) return false;
+
+        int cx = mx - cr.x, cy = my - cr.y;
+        if (ic->textMode) { ic->textPX = cx; ic->textPY = cy; return true; }
+
+        ic->isDrawing = true;
+        ic->startX = cx; ic->startY = cy;
+        ic->lastX  = cx; ic->lastY  = cy;
+
+        switch (ic->tool) {
+            case CosTool::PEN:
+                cos_disc(rend, ic->canvas, cx, cy, sz, col); break;
+            case CosTool::ERASER:
+                cos_disc(rend, ic->canvas, cx, cy, sz * 2, {255,255,255,255}); break;
+            case CosTool::FILL:
+                cos_fillCanvas(rend, ic->canvas, ic->cW, ic->cH, col);
+                ic->isDrawing = false; break;
+            default:
+                SDL_SetRenderTarget(rend, ic->preview);
+                SDL_SetRenderDrawColor(rend, 0, 0, 0, 0);
+                SDL_RenderClear(rend);
+                SDL_SetRenderTarget(rend, nullptr); break;
+        }
+        return true;
+    }
+
+    if (ev->type == SDL_MOUSEMOTION && ic->isDrawing)
+    {
+        int cx = ev->motion.x - cr.x, cy = ev->motion.y - cr.y;
+        switch (ic->tool) {
+            case CosTool::PEN:
+                cos_strokeLine(rend, ic->canvas, ic->lastX, ic->lastY, cx, cy, sz, col); break;
+            case CosTool::ERASER:
+                cos_strokeLine(rend, ic->canvas, ic->lastX, ic->lastY, cx, cy, sz * 2,
+                               {255,255,255,255}); break;
+            case CosTool::LINE: {
+                SDL_SetRenderTarget(rend, ic->preview); SDL_SetRenderDrawColor(rend,0,0,0,0);
+                SDL_RenderClear(rend); SDL_SetRenderTarget(rend, nullptr);
+                cos_strokeLine(rend, ic->preview, ic->startX, ic->startY, cx, cy, sz, col); break; }
+            case CosTool::RECT: {
+                SDL_SetRenderTarget(rend, ic->preview); SDL_SetRenderDrawColor(rend,0,0,0,0);
+                SDL_RenderClear(rend); SDL_SetRenderTarget(rend, nullptr);
+                cos_outlineRect(rend, ic->preview, ic->startX, ic->startY, cx, cy, sz, col); break; }
+            case CosTool::CIRCLE: {
+                SDL_SetRenderTarget(rend, ic->preview); SDL_SetRenderDrawColor(rend,0,0,0,0);
+                SDL_RenderClear(rend); SDL_SetRenderTarget(rend, nullptr);
+                cos_outlineEllipse(rend, ic->preview, ic->startX, ic->startY, cx, cy, col); break; }
+            default: break;
+        }
+        ic->lastX = cx; ic->lastY = cy;
+        return true;
+    }
+
+    if (ev->type == SDL_MOUSEBUTTONUP && ev->button.button == SDL_BUTTON_LEFT && ic->isDrawing)
+    {
+        int cx = ev->button.x - cr.x, cy = ev->button.y - cr.y;
+        switch (ic->tool) {
+            case CosTool::LINE:
+                cos_strokeLine(rend, ic->canvas, ic->startX, ic->startY, cx, cy, sz, col); break;
+            case CosTool::RECT:
+                cos_outlineRect(rend, ic->canvas, ic->startX, ic->startY, cx, cy, sz, col); break;
+            case CosTool::CIRCLE:
+                cos_outlineEllipse(rend, ic->canvas, ic->startX, ic->startY, cx, cy, col); break;
+            default: break;
+        }
+        SDL_SetRenderTarget(rend, ic->preview);
+        SDL_SetRenderDrawColor(rend, 0, 0, 0, 0); SDL_RenderClear(rend);
+        SDL_SetRenderTarget(rend, nullptr);
+        ic->isDrawing = false;
+        return true;
+    }
+
+    if (ev->type == SDL_TEXTINPUT) {
+        if (ic->textMode)    { ic->textBuf   += ev->text.text; return true; }
+        if (ic->renamingCos) { ic->renameBuf += ev->text.text; return true; }
+    }
+
+    if (ev->type == SDL_KEYDOWN) {
+        auto sym = ev->key.keysym.sym;
+        if (ic->textMode) {
+            if (sym == SDLK_BACKSPACE && !ic->textBuf.empty()) { ic->textBuf.pop_back(); return true; }
+            if (sym == SDLK_RETURN) {
+                if (font && !ic->textBuf.empty()) {
+                    SDL_Surface* ts = TTF_RenderText_Blended(font, ic->textBuf.c_str(),
+                                                             ic->palette[ic->colorIdx]);
+                    if (ts) {
+                        SDL_Texture* tt = SDL_CreateTextureFromSurface(rend, ts);
+                        SDL_SetRenderTarget(rend, ic->canvas);
+                        SDL_Rect dst = {ic->textPX, ic->textPY, ts->w, ts->h};
+                        SDL_RenderCopy(rend, tt, nullptr, &dst);
+                        SDL_SetRenderTarget(rend, nullptr);
+                        SDL_DestroyTexture(tt); SDL_FreeSurface(ts);
+                    }
+                }
+                ic->textBuf.clear(); ic->textMode = false; SDL_StopTextInput(); return true;
+            }
+            if (sym == SDLK_ESCAPE) {
+                ic->textBuf.clear(); ic->textMode = false; SDL_StopTextInput(); return true;
+            }
+            return true;
+        }
+        if (ic->renamingCos) {
+            if (sym == SDLK_BACKSPACE && !ic->renameBuf.empty())
+            { ic->renameBuf.pop_back(); return true; }
+            if (sym == SDLK_RETURN) {
+                if (ic->renameIdx >= 0 && ic->ownerIdx >= 0) {
+                    auto& cc = g_cc[ic->ownerIdx];
+                    if (ic->renameIdx < (int)cc.costumes.size())
+                        cc.costumes[ic->renameIdx].name = ic->renameBuf;
+                }
+                ic->renamingCos = false; SDL_StopTextInput(); return true;
+            }
+            if (sym == SDLK_ESCAPE) { ic->renamingCos = false; SDL_StopTextInput(); return true; }
+            return true;
+        }
+    }
+    return false;
+}
+
+inline void renderInlineCostumesPanel(SDL_Renderer* rend, TTF_Font* font,
+                                      InlineCostumesState* ic, CharacterManager* mgr,
+                                      int mouseX, int mouseY, bool mouseClicked)
+{
+    if (!font || !ic->canvas) return;
+
+    const SDL_Color WHITE = {255,255,255,255};
+    const SDL_Color GRAY  = {160,160,160,255};
+    const SDL_Color CYAN  = {  0,200,255,255};
+    const SDL_Color DARK  = { 25, 25, 45, 255};
+    const SDL_Color PANEL = { 35, 35, 60, 255};
+
+    auto drawTxt = [&](const char* t, int x, int y, SDL_Color c) {
+        if (!t || !*t) return;
+        SDL_Surface* s = TTF_RenderText_Blended(font, t, c);
+        if (!s) return;
+        SDL_Texture* tx = SDL_CreateTextureFromSurface(rend, s);
+        SDL_Rect r = {x, y, s->w, s->h};
+        SDL_RenderCopy(rend, tx, nullptr, &r);
+        SDL_DestroyTexture(tx); SDL_FreeSurface(s);
+    };
+    auto drawTxtC = [&](const char* t, SDL_Rect btn, SDL_Color c) {
+        if (!t || !*t) return;
+        SDL_Surface* s = TTF_RenderText_Blended(font, t, c);
+        if (!s) return;
+        SDL_Texture* tx = SDL_CreateTextureFromSurface(rend, s);
+        SDL_Rect r = {btn.x + (btn.w - s->w) / 2, btn.y + (btn.h - s->h) / 2, s->w, s->h};
+        SDL_RenderCopy(rend, tx, nullptr, &r);
+        SDL_DestroyTexture(tx); SDL_FreeSurface(s);
+    };
+    auto isHit = [&](SDL_Rect b) {
+        return mouseX >= b.x && mouseX < b.x + b.w &&
+               mouseY >= b.y && mouseY < b.y + b.h;
+    };
+
+    auto& ar = ic->areaRect;
+    auto& lr = ic->listRect;
+    auto& cr = ic->canvasRect;
+    auto& tr = ic->toolsRect;
+
+    SDL_SetRenderDrawColor(rend, DARK.r, DARK.g, DARK.b, 255);
+    SDL_RenderFillRect(rend, &ar);
+
+    SDL_Rect hdr = {ar.x, ar.y, ar.w, lr.y - ar.y};
+    SDL_SetRenderDrawColor(rend, 40, 40, 75, 255);
+    SDL_RenderFillRect(rend, &hdr);
+
+    std::string title = "Costumes";
+    if (ic->ownerIdx >= 0 && ic->ownerIdx < mgr->count)
+        title += "  \xe2\x80\x94  " + mgr->characters[ic->ownerIdx].name;
+    drawTxt(title.c_str(), ar.x + 10, ar.y + 4, WHITE);
+
+    // ── Costume list ──
+    SDL_SetRenderDrawColor(rend, PANEL.r, PANEL.g, PANEL.b, 255);
+    SDL_RenderFillRect(rend, &lr);
+    SDL_SetRenderDrawColor(rend, 55, 55, 110, 255);
+    SDL_RenderDrawRect(rend, &lr);
+
+    const int ITEM_H       = 60;
+    const int LIST_FOOT_H  = 56;
+
+    SDL_Rect listBody = {lr.x, lr.y, lr.w, lr.h - LIST_FOOT_H};
+    SDL_RenderSetClipRect(rend, &listBody);
+
+    if (ic->ownerIdx >= 0) {
+        auto& cc = g_cc[ic->ownerIdx];
+        for (int i = 0; i < (int)cc.costumes.size(); i++) {
+            int ry = lr.y + i * ITEM_H - ic->cosScroll;
+            if (ry + ITEM_H < lr.y || ry > lr.y + lr.h - LIST_FOOT_H) continue;
+            auto& cf = cc.costumes[i];
+            bool sel = (cc.active == i);
+
+            SDL_Rect bg = {lr.x + 2, ry, lr.w - 4, ITEM_H - 3};
+            SDL_SetRenderDrawColor(rend, sel ? 0 : 40, sel ? 130 : 40, sel ? 190 : 75, 255);
+            SDL_RenderFillRect(rend, &bg);
+
+            SDL_Rect thumb = {lr.x + 4, ry + 4, 50, 50};
+            if (cf.texture) SDL_RenderCopy(rend, cf.texture, nullptr, &thumb);
+            else { SDL_SetRenderDrawColor(rend, 70, 70, 70, 255); SDL_RenderFillRect(rend, &thumb); }
+
+            drawTxt(cf.name.c_str(), lr.x + 58, ry + ITEM_H / 2 - 7, sel ? CYAN : WHITE);
+
+            SDL_Rect renBtn = {lr.x + lr.w - 26, ry + ITEM_H / 2 - 8, 22, 16};
+            SDL_SetRenderDrawColor(rend, 55, 55, 130, 255);
+            SDL_RenderFillRect(rend, &renBtn);
+            drawTxtC("...", renBtn, GRAY);
+
+            if (mouseClicked && isHit(renBtn)) {
+                ic->renamingCos = true; ic->renameIdx = i;
+                ic->renameBuf = cf.name; SDL_StartTextInput();
+            }
+            if (mouseClicked && isHit(bg) && !isHit(renBtn)) {
+                cc.active = i;
+                SDL_SetRenderTarget(rend, ic->canvas);
+                SDL_SetRenderDrawColor(rend, 255, 255, 255, 255); SDL_RenderClear(rend);
+                if (cf.texture) {
+                    float sx = (float)ic->cW / std::max(1, cf.w);
+                    float sy = (float)ic->cH / std::max(1, cf.h);
+                    float sc = std::min({sx, sy, 1.f});
+                    int dw = (int)(cf.w * sc), dh = (int)(cf.h * sc);
+                    SDL_Rect dst = {(ic->cW - dw) / 2, (ic->cH - dh) / 2, dw, dh};
+                    SDL_RenderCopy(rend, cf.texture, nullptr, &dst);
+                }
+                SDL_SetRenderTarget(rend, nullptr);
+            }
+        }
+    }
+    SDL_RenderSetClipRect(rend, nullptr);
+
+    int fy = lr.y + lr.h - LIST_FOOT_H;
+    SDL_Rect upBtn = {lr.x + 3, fy,      lr.w - 6, 24};
+    SDL_Rect nbBtn = {lr.x + 3, fy + 28, lr.w - 6, 24};
+
+    SDL_SetRenderDrawColor(rend, 20, 110, 20, 255); SDL_RenderFillRect(rend, &upBtn);
+    drawTxtC("+ Upload", upBtn, WHITE);
+    SDL_SetRenderDrawColor(rend, 50, 50, 140, 255); SDL_RenderFillRect(rend, &nbBtn);
+    drawTxtC("+ New Blank", nbBtn, WHITE);
+
+    if (mouseClicked && isHit(upBtn) && ic->ownerIdx >= 0) {
+        int prevOwner = ic->ownerIdx;
+        cosUploadImages(rend, ic->ownerIdx);
+        ic->ownerIdx = -1;  // force canvas reload on next inlineCosLoadOwner call
+        inlineCosLoadOwner(ic, rend, prevOwner);
+    }
+    if (mouseClicked && isHit(nbBtn)) {
+        SDL_SetRenderTarget(rend, ic->canvas);
+        SDL_SetRenderDrawColor(rend, 255, 255, 255, 255); SDL_RenderClear(rend);
+        SDL_SetRenderTarget(rend, nullptr);
+    }
+
+    if (ic->renamingCos && ic->renameIdx >= 0)
+        drawTxt(("-> " + ic->renameBuf + "|").c_str(), lr.x + 4, fy - 18, CYAN);
+
+    SDL_Rect cbdr = {cr.x - 2, cr.y - 2, cr.w + 4, cr.h + 4};
+    SDL_SetRenderDrawColor(rend, 200, 200, 200, 255);
+    SDL_RenderFillRect(rend, &cbdr);
+    SDL_RenderCopy(rend, ic->canvas, nullptr, &cr);
+    SDL_SetTextureBlendMode(ic->preview, SDL_BLENDMODE_BLEND);
+    SDL_RenderCopy(rend, ic->preview, nullptr, &cr);
+
+    if (ic->textMode) {
+        int tx = cr.x + ic->textPX, ty2 = cr.y + ic->textPY;
+        if (!ic->textBuf.empty()) {
+            SDL_Surface* ts = TTF_RenderText_Blended(font, ic->textBuf.c_str(),
+                                                     ic->palette[ic->colorIdx]);
+            if (ts) {
+                SDL_Texture* tt = SDL_CreateTextureFromSurface(rend, ts);
+                SDL_Rect dr = {tx, ty2, ts->w, ts->h};
+                SDL_RenderCopy(rend, tt, nullptr, &dr);
+                SDL_DestroyTexture(tt); SDL_FreeSurface(ts);
+            }
+        }
+        if ((SDL_GetTicks() / 500) % 2 == 0) {
+            SDL_SetRenderDrawColor(rend, 0, 0, 0, 255);
+            SDL_RenderDrawLine(rend, tx, ty2, tx, ty2 + 16);
+        }
+    }
+
+    // ── Tools panel ──
+    SDL_SetRenderDrawColor(rend, 22, 22, 48, 255); SDL_RenderFillRect(rend, &tr);
+    SDL_SetRenderDrawColor(rend, 50, 50, 110, 255); SDL_RenderDrawRect(rend, &tr);
+
+    int ty3 = tr.y + 6;
+    const int TW = tr.w - 10, TBH = 22;
+
+    drawTxt("Tools", tr.x + 5, ty3, WHITE); ty3 += 20;
+
+    struct TBtn { const char* lbl; CosTool t; };
+    const TBtn tbns[] = {
+            {"Pen",CosTool::PEN},{"Eraser",CosTool::ERASER},{"Fill BG",CosTool::FILL},
+            {"Text",CosTool::TEXT},{"Line",CosTool::LINE},{"Circle",CosTool::CIRCLE},{"Rect",CosTool::RECT}
+    };
+    for (auto& tb : tbns) {
+        SDL_Rect btn = {tr.x + 5, ty3, TW, TBH};
+        bool act = (ic->tool == tb.t);
+        SDL_SetRenderDrawColor(rend, act ? 75 : 35, act ? 75 : 35, act ? 175 : 90, 255);
+        SDL_RenderFillRect(rend, &btn);
+        if (act) { SDL_SetRenderDrawColor(rend, 0, 200, 255, 255); SDL_RenderDrawRect(rend, &btn); }
+        drawTxtC(tb.lbl, btn, act ? CYAN : WHITE);
+        if (mouseClicked && isHit(btn)) {
+            ic->tool = tb.t;
+            ic->textMode = (tb.t == CosTool::TEXT);
+            if (ic->textMode) SDL_StartTextInput(); else SDL_StopTextInput();
+        }
+        ty3 += TBH + 3;
+    }
+
+    ty3 += 3;
+    SDL_SetRenderDrawColor(rend, 55, 55, 110, 255);
+    SDL_RenderDrawLine(rend, tr.x + 5, ty3, tr.x + tr.w - 5, ty3); ty3 += 6;
+
+    drawTxt("Size:", tr.x + 5, ty3, GRAY); ty3 += 17;
+    int szW = (TW - 8) / 3;
+    const char* szL[] = {"S", "M", "L"};
+    for (int si = 0; si < 3; si++) {
+        SDL_Rect sb = {tr.x + 5 + si * (szW + 4), ty3, szW, 22};
+        bool sel = (ic->sizeIdx == si);
+        SDL_SetRenderDrawColor(rend, sel?60:30, sel?60:30, sel?175:75, 255);
+        SDL_RenderFillRect(rend, &sb);
+        if (sel) { SDL_SetRenderDrawColor(rend, 0, 200, 255, 255); SDL_RenderDrawRect(rend, &sb); }
+        drawTxtC(szL[si], sb, sel ? CYAN : WHITE);
+        if (mouseClicked && isHit(sb)) ic->sizeIdx = si;
+    }
+    ty3 += 26;
+
+    drawTxt("Color:", tr.x + 5, ty3, GRAY); ty3 += 17;
+    int cW2 = (TW - 8) / 3;
+    for (int ci = 0; ci < 3; ci++) {
+        SDL_Rect cb = {tr.x + 5 + ci * (cW2 + 4), ty3, cW2, 22};
+        SDL_Color& pc = ic->palette[ci];
+        SDL_SetRenderDrawColor(rend, pc.r, pc.g, pc.b, 255); SDL_RenderFillRect(rend, &cb);
+        if (ic->colorIdx == ci) {
+            SDL_SetRenderDrawColor(rend, 255, 255, 255, 255); SDL_RenderDrawRect(rend, &cb);
+            SDL_Rect inn = {cb.x+1, cb.y+1, cb.w-2, cb.h-2};
+            SDL_SetRenderDrawColor(rend, 0, 0, 0, 255); SDL_RenderDrawRect(rend, &inn);
+        }
+        if (mouseClicked && isHit(cb)) ic->colorIdx = ci;
+    }
+    ty3 += 26;
+
+    SDL_SetRenderDrawColor(rend, 55, 55, 110, 255);
+    SDL_RenderDrawLine(rend, tr.x+5, ty3, tr.x+tr.w-5, ty3); ty3 += 6;
+
+    int hw = (TW - 4) / 2;
+    SDL_Rect flipH = {tr.x+5,        ty3, hw, 22};
+    SDL_Rect flipV = {tr.x+5+hw+4,   ty3, hw, 22};
+    SDL_SetRenderDrawColor(rend, 80, 75, 30, 255); SDL_RenderFillRect(rend, &flipH);
+    drawTxtC("Flip H", flipH, WHITE);
+    if (mouseClicked && isHit(flipH)) {
+        SDL_Texture* f = cos_flipTex(rend, ic->canvas, ic->cW, ic->cH, true, false);
+        SDL_DestroyTexture(ic->canvas); ic->canvas = f;
+    }
+    SDL_SetRenderDrawColor(rend, 75, 30, 80, 255); SDL_RenderFillRect(rend, &flipV);
+    drawTxtC("Flip V", flipV, WHITE);
+    if (mouseClicked && isHit(flipV)) {
+        SDL_Texture* f = cos_flipTex(rend, ic->canvas, ic->cW, ic->cH, false, true);
+        SDL_DestroyTexture(ic->canvas); ic->canvas = f;
+    }
+    ty3 += 26;
+
+    SDL_Rect clrBtn = {tr.x+5, ty3, TW, 22};
+    SDL_SetRenderDrawColor(rend, 140, 45, 45, 255); SDL_RenderFillRect(rend, &clrBtn);
+    drawTxtC("Clear Canvas", clrBtn, WHITE);
+    if (mouseClicked && isHit(clrBtn)) {
+        SDL_SetRenderTarget(rend, ic->canvas);
+        SDL_SetRenderDrawColor(rend, 255, 255, 255, 255); SDL_RenderClear(rend);
+        SDL_SetRenderTarget(rend, nullptr);
+    }
+    ty3 += 26;
+
+    SDL_Rect saveBtn = {tr.x+5, ty3, TW, 22};
+    SDL_SetRenderDrawColor(rend, 20, 115, 60, 255); SDL_RenderFillRect(rend, &saveBtn);
+    drawTxtC("Save as Costume", saveBtn, WHITE);
+    if (mouseClicked && isHit(saveBtn) && ic->ownerIdx >= 0) {
+        auto& cc = g_cc[ic->ownerIdx];
+        SDL_Texture* copy = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGBA8888,
+                                              SDL_TEXTUREACCESS_TARGET, ic->cW, ic->cH);
+        SDL_SetRenderTarget(rend, copy);
+        SDL_RenderCopy(rend, ic->canvas, nullptr, nullptr);
+        SDL_SetRenderTarget(rend, nullptr);
+        CostumeFrame f;
+        f.texture = copy; f.w = ic->cW; f.h = ic->cH;
+        f.name = "Costume " + std::to_string((int)cc.costumes.size() + 1);
+        cc.costumes.push_back(f);
+        cc.active = (int)cc.costumes.size() - 1;
+    }
+    ty3 += 26;
+
+    SDL_Rect applyBtn = {tr.x+5, ty3, TW, 22};
+    SDL_SetRenderDrawColor(rend, 0, 90, 190, 255); SDL_RenderFillRect(rend, &applyBtn);
+    drawTxtC("Apply to Char", applyBtn, WHITE);
+    if (mouseClicked && isHit(applyBtn) && mgr && ic->ownerIdx >= 0 && ic->ownerIdx < mgr->count) {
+        auto& cc = g_cc[ic->ownerIdx];
+        if (cc.active >= 0 && cc.active < (int)cc.costumes.size() &&
+            cc.costumes[cc.active].texture)
+        {
+            auto& ch = mgr->characters[ic->ownerIdx];
+            auto& cf = cc.costumes[cc.active];
+            int tw = ch.width  > 0 ? ch.width  : cf.w;
+            int th = ch.height > 0 ? ch.height : cf.h;
+            SDL_Texture* scaled = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGBA8888,
+                                                    SDL_TEXTUREACCESS_TARGET, tw, th);
+            SDL_SetRenderTarget(rend, scaled);
+            SDL_SetRenderDrawColor(rend, 0, 0, 0, 0); SDL_RenderClear(rend);
+            SDL_RenderCopy(rend, cf.texture, nullptr, nullptr);
+            SDL_SetRenderTarget(rend, nullptr);
+            if (ch.texture) SDL_DestroyTexture(ch.texture);
+            ch.texture = scaled; ch.width = tw; ch.height = th;
+        }
+    }
+}
+
 inline bool renderCostumesButton(SDL_Renderer* rend, TTF_Font* font,
                                  int x, int y, int w,
                                  int mouseX, int mouseY, bool mouseClicked)
