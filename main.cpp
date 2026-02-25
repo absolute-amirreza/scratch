@@ -6,35 +6,13 @@
 
 int main(int argc, char* argv[])
 {
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
+    IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG);
+    TTF_Init();
     srand(static_cast<unsigned>(time(nullptr)));
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
-    {
-        SDL_Log("SDL_Init error: %s", SDL_GetError());
-        return 1;
-    }
-    if (!(IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG) & (IMG_INIT_PNG | IMG_INIT_JPG)))
-    {
-        SDL_Log("IMG_Init error: %s", IMG_GetError());
-        SDL_Quit();
-        return 1;
-    }
-    if (TTF_Init() != 0)
-    {
-        SDL_Log("TTF_Init error: %s", TTF_GetError());
-        IMG_Quit();
-        SDL_Quit();
-        return 1;
-    }
-
     SDL_DisplayMode dm;
-    if (SDL_GetCurrentDisplayMode(0, &dm) != 0)
-    {
-        SDL_Log("DisplayMode error: %s", SDL_GetError());
-        TTF_Quit(); IMG_Quit(); SDL_Quit();
-        return 1;
-    }
-
+    SDL_GetCurrentDisplayMode(0, &dm);
     wt = dm.w;
     ht = dm.h - 70;
 
@@ -65,23 +43,9 @@ int main(int argc, char* argv[])
     CHAR_BAR_RECT = {charBarX, charBarY, charBarW, charBarH};
 
     SDL_Window* window = SDL_CreateWindow("project", 0, 20, wt, ht, SDL_WINDOW_SHOWN);
-    if (!window)
-    {
-        SDL_Log("Window error: %s", SDL_GetError());
-        TTF_Quit(); IMG_Quit(); SDL_Quit();
-        return 1;
-    }
 
     renderer = SDL_CreateRenderer(window, -1,
                                   SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
-    if (!renderer)
-    {
-        SDL_Log("Renderer error: %s", SDL_GetError());
-        SDL_DestroyWindow(window);
-        TTF_Quit(); IMG_Quit(); SDL_Quit();
-        return 1;
-    }
-
     SDL_RaiseWindow(window);
     drawmm(true);
     msx(0, true);
@@ -100,13 +64,14 @@ int main(int argc, char* argv[])
     ImageEditorState    imgEditor = {};
     CharacterBarState   charBar   = {};
     CostumesMenuState   costumesMenu = {};
+    InlineCostumesState inlineCos    = {};
 
     initBackgroundMenuState(&bgMenu);
     initCharacterManager(&charMgr);
     initCharacterBarState(&charBar);
     initCostumesMenu(&costumesMenu);
+    initInlineCostumes(&inlineCos, renderer, wt - 500, ht - 80);
 
-    // Connect global execution pointers to the local managers
     g_charMgr = &charMgr;
     g_bgState  = &bgState;
 
@@ -384,75 +349,81 @@ int main(int argc, char* argv[])
                         }
                         else if (e.button.x < 56 && e.button.y < 530 && e.button.y > 80)
                         {
-                            int n = (e.button.y - 80) / 50;
-                            if (m != n)
+                            if (currentTab == 0)
                             {
-                                SDL_SetRenderTarget(renderer, working->texture);
-                                change_c = true;
-                                drawexx(n, m);
-                                m = n;
-                                SDL_SetRenderTarget(renderer, working->texture);
-                                exc[n].copy();
-                                if (m < 8 && m != 6 && m != 4 && m != 3)
-                                    for (const string& sv : working->bol[m])
-                                        for (const block& bv : exc[n].blocks)
-                                            if (bv.b && bv.pn[0] == sv)
-                                                bcl(61, bv.r.y + 7, 73, bv.r.y + 19, 0xffff0000);
+                                int n = (e.button.y - 80) / 50;
+                                if (m != n)
+                                {
+                                    SDL_SetRenderTarget(renderer, working->texture);
+                                    change_c = true;
+                                    drawexx(n, m);
+                                    m = n;
+                                    SDL_SetRenderTarget(renderer, working->texture);
+                                    exc[n].copy();
+                                    if (m < 8 && m != 6 && m != 4 && m != 3)
+                                        for (const string& sv : working->bol[m])
+                                            for (const block& bv : exc[n].blocks)
+                                                if (bv.b && bv.pn[0] == sv)
+                                                    bcl(61, bv.r.y + 7, 73, bv.r.y + 19, 0xffff0000);
+                                }
                             }
                         }
                         else if (e.button.x > 56 && e.button.x < 306 && e.button.y > 80)
                         {
-                            SDL_SetRenderTarget(renderer, working->texture);
-                            if (m == 7 && !myval &&
-                                e.button.y > 85 && e.button.x > 61 &&
-                                e.button.x < 149 && e.button.y < 111)
+                            if (currentTab == 0)
                             {
-                                myval = true;
-                                SDL_SetRenderTarget(renderer, backsave);
-                                SDL_RenderCopy(renderer, working->texture, nullptr, nullptr);
                                 SDL_SetRenderTarget(renderer, working->texture);
-                                SDL_RenderCopy(renderer, creva, nullptr, &bn);
-                                SDL_StartTextInput();
-                                change_c = true;
-                            }
-                            else
-                            {
-                                for (const auto& bv : exc[m].blocks)
+                                if (m == 7 && !myval &&
+                                    e.button.y > 85 && e.button.x > 61 &&
+                                    e.button.x < 149 && e.button.y < 111)
                                 {
-                                    if (e.button.x - 56 > bv.r.x &&
-                                        e.button.x - 56 < bv.r.x + bv.r.w &&
-                                        e.button.y - 80 > bv.r.y &&
-                                        e.button.y - 80 < bv.r.y + bv.r.h &&
-                                        click(bv, e.button.x - 56, e.button.y - 80).a > 1)
+                                    myval = true;
+                                    SDL_SetRenderTarget(renderer, backsave);
+                                    SDL_RenderCopy(renderer, working->texture, nullptr, nullptr);
+                                    SDL_SetRenderTarget(renderer, working->texture);
+                                    SDL_RenderCopy(renderer, creva, nullptr, &bn);
+                                    SDL_StartTextInput();
+                                    change_c = true;
+                                }
+                                else
+                                {
+                                    for (const auto& bv : exc[m].blocks)
                                     {
-                                        current         = {copyb(bv)};
-                                        drag            = true;
-                                        xz              = e.button.x;
-                                        yz              = e.button.y;
-                                        current[0]->r.x = bv.r.x + 56;
-                                        SDL_SetRenderTarget(renderer, backsave);
-                                        SDL_RenderCopy(renderer, working->texture, nullptr, nullptr);
-                                        SDL_SetRenderTarget(renderer, working->texture);
-                                        change_c = true;
-                                    }
-                                    else if (m < 8 && m != 6 && m != 4 && m != 3 &&
-                                             bv.b &&
-                                             e.button.x > 61 && e.button.x < 73 &&
-                                             e.button.y > bv.r.y + 87 &&
-                                             e.button.y < bv.r.y + 99)
-                                    {
-                                        auto it = find(working->bol[m].begin(), working->bol[m].end(), bv.pn[0]);
-                                        change_c = true;
-                                        if (it == working->bol[m].end())
+                                        if (e.button.x - 56 > bv.r.x &&
+                                            e.button.x - 56 < bv.r.x + bv.r.w &&
+                                            e.button.y - 80 > bv.r.y &&
+                                            e.button.y - 80 < bv.r.y + bv.r.h &&
+                                            click(bv, e.button.x - 56, e.button.y - 80).a > 1)
                                         {
-                                            bcl(61, bv.r.y + 7, 73, bv.r.y + 19, 0xffff0000);
-                                            working->bol[m].push_back(bv.pn[0]);
+                                            current         = {copyb(bv)};
+                                            drag            = true;
+                                            xz              = e.button.x;
+                                            yz              = e.button.y;
+                                            current[0]->r.x = bv.r.x + 56;
+                                            SDL_SetRenderTarget(renderer, backsave);
+                                            SDL_RenderCopy(renderer, working->texture, nullptr, nullptr);
+                                            SDL_SetRenderTarget(renderer, working->texture);
+                                            change_c = true;
                                         }
-                                        else
+                                        else if (m < 8 && m != 6 && m != 4 && m != 3 &&
+                                                 bv.b &&
+                                                 e.button.x > 61 && e.button.x < 73 &&
+                                                 e.button.y > bv.r.y + 87 &&
+                                                 e.button.y < bv.r.y + 99)
                                         {
-                                            bcl(61, bv.r.y + 7, 73, bv.r.y + 19, 0xffe1f0e1);
-                                            working->bol[m].erase(it);
-                                            rectangleColor(renderer, 61, bv.r.y + 7, 73, bv.r.y + 19, 0xff000000);
+                                            auto it = find(working->bol[m].begin(), working->bol[m].end(), bv.pn[0]);
+                                            change_c = true;
+                                            if (it == working->bol[m].end())
+                                            {
+                                                bcl(61, bv.r.y + 7, 73, bv.r.y + 19, 0xffff0000);
+                                                working->bol[m].push_back(bv.pn[0]);
+                                            }
+                                            else
+                                            {
+                                                bcl(61, bv.r.y + 7, 73, bv.r.y + 19, 0xffe1f0e1);
+                                                working->bol[m].erase(it);
+                                                rectangleColor(renderer, 61, bv.r.y + 7, 73, bv.r.y + 19, 0xff000000);
+                                            }
                                         }
                                     }
                                 }
@@ -460,50 +431,57 @@ int main(int argc, char* argv[])
                         }
                         else if (e.button.x > 306 && e.button.x < wt - 500 && e.button.y > 80)
                         {
-                            SDL_SetRenderTarget(renderer, working->texture);
-                            o ss = working->get(e.button.x, e.button.y - 80, working->texture);
-                            SDL_SetRenderTarget(renderer, working->texture);
+                            if (currentTab == 1)
+                            {
+                                handleInlineCostumesEvent(&inlineCos, renderer, font, &e, &charMgr);
+                            }
+                            else if (currentTab == 0)
+                            {
+                                SDL_SetRenderTarget(renderer, working->texture);
+                                o ss = working->get(e.button.x, e.button.y - 80, working->texture);
+                                SDL_SetRenderTarget(renderer, working->texture);
 
-                            if (ss.b)
-                            {
-                                drag    = true;
-                                xz      = e.button.x;
-                                yz      = e.button.y;
-                                current = ss.j;
-                                SDL_SetRenderTarget(renderer, backsave);
-                                SDL_RenderCopy(renderer, working->texture, nullptr, nullptr);
-                                SDL_SetRenderTarget(renderer, working->texture);
-                                change_c = true;
-                                for (block* bv : current)
+                                if (ss.b)
                                 {
-                                    bv->r.x += e.motion.x - xz;
-                                    bv->r.y += e.motion.y - yz;
-                                    SDL_RenderCopy(renderer, bv->blu, nullptr, &bv->r);
+                                    drag    = true;
+                                    xz      = e.button.x;
+                                    yz      = e.button.y;
+                                    current = ss.j;
+                                    SDL_SetRenderTarget(renderer, backsave);
+                                    SDL_RenderCopy(renderer, working->texture, nullptr, nullptr);
+                                    SDL_SetRenderTarget(renderer, working->texture);
+                                    change_c = true;
+                                    for (block* bv : current)
+                                    {
+                                        bv->r.x += e.motion.x - xz;
+                                        bv->r.y += e.motion.y - yz;
+                                        SDL_RenderCopy(renderer, bv->blu, nullptr, &bv->r);
+                                    }
                                 }
-                            }
-                            else if (ss.right == 1)
-                            {
-                                ty       = true;
-                                typeb    = ss.rib;
-                                ts       = ss.ss;
-                                change_c = true;
-                                SDL_StartTextInput();
-                                bcl(typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y,
-                                    typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
-                            }
-                            else if (ss.right == 2)
-                            {
-                                mo       = true;
-                                typeb    = ss.rib;
-                                ts       = ss.ss;
-                                change_c = true;
-                                SDL_SetRenderTarget(renderer, backsave);
-                                SDL_RenderCopy(renderer, working->texture, nullptr, nullptr);
-                                SDL_SetRenderTarget(renderer, working->texture);
-                                bcl(300, 0, 500, 400, typeb->color);
-                                for (int i = 0; i < (int)typeb->m[ts].size(); i++)
-                                    textRGBA(renderer, i % 2 == 0 ? 300 : 400, 2 + (i / 2) * 18,
-                                             typeb->m[ts][i].c_str(), "tahoma.ttf", 12, 0, 0, 0, 255);
+                                else if (ss.right == 1)
+                                {
+                                    ty       = true;
+                                    typeb    = ss.rib;
+                                    ts       = ss.ss;
+                                    change_c = true;
+                                    SDL_StartTextInput();
+                                    bcl(typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y,
+                                        typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
+                                }
+                                else if (ss.right == 2)
+                                {
+                                    mo       = true;
+                                    typeb    = ss.rib;
+                                    ts       = ss.ss;
+                                    change_c = true;
+                                    SDL_SetRenderTarget(renderer, backsave);
+                                    SDL_RenderCopy(renderer, working->texture, nullptr, nullptr);
+                                    SDL_SetRenderTarget(renderer, working->texture);
+                                    bcl(300, 0, 500, 400, typeb->color);
+                                    for (int i = 0; i < (int)typeb->m[ts].size(); i++)
+                                        textRGBA(renderer, i % 2 == 0 ? 300 : 400, 2 + (i / 2) * 18,
+                                                 typeb->m[ts][i].c_str(), "tahoma.ttf", 12, 0, 0, 0, 255);
+                                }
                             }
                         }
                         else if (e.button.y > 50 && e.button.y < 80)
@@ -511,11 +489,52 @@ int main(int argc, char* argv[])
                             if (e.button.x < 216)
                             {
                                 SDL_SetRenderTarget(renderer, nullptr);
-                                currentTab = msx(e.button.x, isSprite);
+                                int newTab = msx(e.button.x, isSprite);
+                                if (newTab != currentTab)
+                                {
+                                    if (currentTab == 1)
+                                    {
+                                        if (inlineCos.textMode)
+                                        { inlineCos.textMode = false; inlineCos.textBuf.clear(); SDL_StopTextInput(); }
+                                        if (inlineCos.renamingCos)
+                                        { inlineCos.renamingCos = false; SDL_StopTextInput(); }
+                                        inlineCos.isDrawing = false;
+                                        change_c = true;
+                                    }
+                                    if (newTab == 1)
+                                    {
+                                        if (drag)
+                                        {
+                                            SDL_SetRenderTarget(renderer, working->texture);
+                                            SDL_RenderCopy(renderer, backsave, nullptr, nullptr);
+                                            SDL_SetRenderTarget(renderer, nullptr);
+                                            current.clear();
+                                            drag = false;
+                                        }
+                                        inlineCosLoadOwner(&inlineCos, renderer, charMgr.activeIndex);
+                                        change_c = true;
+                                    }
+                                    currentTab = newTab;
+                                }
                             }
-                            else if (cligri(e.button.x, e.button.y)) {}
-                            else if (clistop(e.button.x, e.button.y)) {}
+                            else if (cligri(e.button.x, e.button.y) ||
+                                     clirec(e.button.x, e.button.y)) {}
                         }
+
+                        else if (e.button.y >= STAGE_Y && e.button.y < STAGE_Y + STAGE_H &&
+                                 e.button.x >= STAGE_X && e.button.x < STAGE_X + STAGE_W)
+                        {
+                            for (int ci = 0; ci < charMgr.count; ci++) {
+                                Character& cc = charMgr.characters[ci];
+                                if (!cc.visible) continue;
+                                if (e.button.x >= cc.x && e.button.x < cc.x + cc.width &&
+                                    e.button.y >= cc.y && e.button.y < cc.y + cc.height) {
+                                    notifySpriteClicked(ci);
+                                    break;
+                                }
+                            }
+                        }
+
                     }
                     else if (e.button.button == SDL_BUTTON_RIGHT)
                     {
@@ -551,7 +570,9 @@ int main(int argc, char* argv[])
                         mouseDown    = false;
                         mouseX       = e.button.x;
                         mouseY       = e.button.y;
-                        if (drag)
+                        if (currentTab == 1 && !costumesMenu.active)
+                            handleInlineCostumesEvent(&inlineCos, renderer, font, &e, &charMgr);
+                        if (drag && currentTab == 0)
                         {
                             SDL_SetRenderTarget(renderer, working->texture);
                             working->add(backsave, current, working->texture);
@@ -564,7 +585,11 @@ int main(int argc, char* argv[])
                 case SDL_MOUSEMOTION:
                     mouseX = e.motion.x;
                     mouseY = e.motion.y;
-                    if (drag)
+                    if (currentTab == 1 && !costumesMenu.active)
+                    {
+                        handleInlineCostumesEvent(&inlineCos, renderer, font, &e, &charMgr);
+                    }
+                    if (drag && currentTab == 0)
                     {
                         SDL_SetRenderTarget(renderer, working->texture);
                         SDL_RenderCopy(renderer, backsave, nullptr, nullptr);
@@ -580,59 +605,82 @@ int main(int argc, char* argv[])
                     break;
 
                 case SDL_TEXTINPUT:
-                    if (myval)
+                    if (g_askActive && !g_askDone)
+                        g_askBuf += e.text.text;
+                    if (currentTab == 1 && !costumesMenu.active)
                     {
-                        SDL_SetRenderTarget(renderer, working->texture);
-                        cva += e.text.text;
-                        bcl(156, 30, 262, 52, 0xffffffff);
-                        textRGBA(renderer, 158, 33, cva.c_str(), "tahoma.ttf", 12, 0, 0, 0, 255);
-                        int ter = convert(cva, 12);
-                        bcl(161 + ter, 31, 164 + ter, 51, 0xff000000);
-                        change_c = true;
+                        handleInlineCostumesEvent(&inlineCos, renderer, font, &e, &charMgr);
                     }
-                    else if (ty && typeb)
+                    else
                     {
-                        SDL_SetRenderTarget(renderer, working->texture);
-                        typeb->v[ts] += e.text.text;
-                        typeb->draw();
-                        SDL_SetRenderTarget(renderer, working->texture);
-                        SDL_RenderCopy(renderer, typeb->blu, nullptr, &typeb->r);
-                        change_c = true;
-                        bcl(typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y,
-                            typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
-                    }
-                    break;
-
-                case SDL_KEYDOWN:
-                    if (myval)
-                    {
-                        SDL_SetRenderTarget(renderer, working->texture);
-                        if (e.key.keysym.sym == SDLK_BACKSPACE && !cva.empty())
+                        if (myval)
                         {
-                            cva.pop_back();
+                            SDL_SetRenderTarget(renderer, working->texture);
+                            cva += e.text.text;
                             bcl(156, 30, 262, 52, 0xffffffff);
-                            if (!cva.empty())
-                                textRGBA(renderer, 158, 33, cva.c_str(), "tahoma.ttf", 12, 0, 0, 0, 255);
+                            textRGBA(renderer, 158, 33, cva.c_str(), "tahoma.ttf", 12, 0, 0, 0, 255);
                             int ter = convert(cva, 12);
                             bcl(161 + ter, 31, 164 + ter, 51, 0xff000000);
                             change_c = true;
                         }
-                    }
-                    else if (ty && typeb)
-                    {
-                        if (e.key.keysym.sym == SDLK_BACKSPACE &&
-                            ts >= 0 && ts < 3 && !typeb->v[ts].empty())
+                        else if (ty && typeb)
                         {
                             SDL_SetRenderTarget(renderer, working->texture);
-                            bcl(typeb->r.x + 50, typeb->r.y,
-                                typeb->r.x + typeb->r.w, typeb->r.y + typeb->r.h, 0xffffffff);
-                            typeb->v[ts].pop_back();
+                            typeb->v[ts] += e.text.text;
                             typeb->draw();
                             SDL_SetRenderTarget(renderer, working->texture);
-                            change_c = true;
                             SDL_RenderCopy(renderer, typeb->blu, nullptr, &typeb->r);
+                            change_c = true;
                             bcl(typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y,
                                 typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
+                        }
+                    }
+                    break;
+
+                case SDL_KEYDOWN:
+                    notifyKeyDown(e.key.keysym.scancode);
+                    notifyKeyEvent(e.key.keysym.scancode);
+                    if (g_askActive && e.key.keysym.sym == SDLK_BACKSPACE && !g_askBuf.empty())
+                        g_askBuf.pop_back();
+                    if (g_askActive && e.key.keysym.sym == SDLK_RETURN) {
+                        g_askDone = true;
+                    }
+                    if (currentTab == 1 && !costumesMenu.active)
+                    {
+                        handleInlineCostumesEvent(&inlineCos, renderer, font, &e, &charMgr);
+                    }
+                    else
+                    {
+                        if (myval)
+                        {
+                            SDL_SetRenderTarget(renderer, working->texture);
+                            if (e.key.keysym.sym == SDLK_BACKSPACE && !cva.empty())
+                            {
+                                cva.pop_back();
+                                bcl(156, 30, 262, 52, 0xffffffff);
+                                if (!cva.empty())
+                                    textRGBA(renderer, 158, 33, cva.c_str(), "tahoma.ttf", 12, 0, 0, 0, 255);
+                                int ter = convert(cva, 12);
+                                bcl(161 + ter, 31, 164 + ter, 51, 0xff000000);
+                                change_c = true;
+                            }
+                        }
+                        else if (ty && typeb)
+                        {
+                            if (e.key.keysym.sym == SDLK_BACKSPACE &&
+                                ts >= 0 && ts < 3 && !typeb->v[ts].empty())
+                            {
+                                SDL_SetRenderTarget(renderer, working->texture);
+                                bcl(typeb->r.x + 50, typeb->r.y,
+                                    typeb->r.x + typeb->r.w, typeb->r.y + typeb->r.h, 0xffffffff);
+                                typeb->v[ts].pop_back();
+                                typeb->draw();
+                                SDL_SetRenderTarget(renderer, working->texture);
+                                change_c = true;
+                                SDL_RenderCopy(renderer, typeb->blu, nullptr, &typeb->r);
+                                bcl(typeb->r.x + typeb->x2v[ts] - 6, typeb->r.y,
+                                    typeb->r.x + typeb->x2v[ts] - 3, typeb->r.y + 26, 0xff000000);
+                            }
                         }
                     }
                     if (e.key.keysym.sym == SDLK_ESCAPE)
@@ -651,12 +699,11 @@ int main(int argc, char* argv[])
                             { const int tabX = (currentTab==1)?100:(currentTab==2)?200:0; msx(tabX, isSprite); }
                         }
                     }
-                    g_keyState[e.key.keysym.scancode]=true;
-                    clikey(e.key.keysym.sym);
                     break;
                 case SDL_KEYUP:
-                    g_keyState[e.key.keysym.scancode] = false;
+                    notifyKeyUp(e.key.keysym.scancode);
                     break;
+
                 default:
                     break;
             }
@@ -677,13 +724,11 @@ int main(int argc, char* argv[])
         if (!imgEditor.active && !costumesMenu.active)
         {
             if (mouseX >= STAGE_X && mouseX < STAGE_X + STAGE_W &&
-               mouseY >= STAGE_Y && mouseY < STAGE_Y + STAGE_H)
+                mouseY >= STAGE_Y && mouseY < STAGE_Y + STAGE_H)
             {
-                bool dragged = handleCharacterDrag(&charMgr, mouseX, mouseY,
-                                                 mouseDown, mouseJustPressed, &dragIndex);
-
-                if (dragged && dragIndex >= 0 && dragIndex < (int)sp.size())
-                {
+                handleCharacterDrag(&charMgr, mouseX, mouseY, mouseDown,
+                                    mouseJustPressed, &dragIndex);
+                if (mouseDown && dragIndex >= 0 && dragIndex < (int)sp.size()) {
                     sp[dragIndex].x = charMgr.characters[dragIndex].x;
                     sp[dragIndex].y = charMgr.characters[dragIndex].y;
                 }
@@ -691,7 +736,7 @@ int main(int argc, char* argv[])
         }
 
 
-            if (mouseClicked && !imgEditor.active && !costumesMenu.active)
+        if (mouseClicked && !imgEditor.active && !costumesMenu.active)
         {
             int bgAction = handleBackgroundBarClick(&bgMenu, BG_BAR_RECT, mouseX, mouseY);
             if (bgAction == 2)
@@ -752,13 +797,13 @@ int main(int argc, char* argv[])
             applyEditorCanvasAsBackground(renderer, &bgState, &imgEditor, WINDOW_W, WINDOW_H);
             SDL_SetRenderTarget(renderer, nullptr);
             drawmm(false);
-            { const int tabX = (currentTab==1)?100:(currentTab==2)?200:0; msx(tabX, isSprite); }
+            { const int tabX = (currentTab==2)?200:(currentTab==1)?100:0; msx(tabX, isSprite); }
         }
         else if (editorWasActive && !imgEditor.active)
         {
             SDL_SetRenderTarget(renderer, nullptr);
             drawmm(false);
-            { const int tabX = (currentTab==1)?100:(currentTab==2)?200:0; msx(tabX, isSprite); }
+            { const int tabX = (currentTab==2)?200:(currentTab==1)?100:0; msx(tabX, isSprite); }
         }
         editorWasActive = imgEditor.active;
 
@@ -778,24 +823,42 @@ int main(int argc, char* argv[])
 
         SDL_SetRenderTarget(renderer, nullptr);
 
-        if (!imgEditor.active)
+        if (!imgEditor.active && !costumesMenu.active)
         {
-            working->copy();
+            if (currentTab == 1 && charMgr.activeIndex != inlineCos.ownerIdx)
+                inlineCosLoadOwner(&inlineCos, renderer, charMgr.activeIndex);
 
-            const int tabX = (currentTab == 1) ? 100 : (currentTab == 2) ? 200 : 0;
-            msx(tabX, isSprite);
+            if (currentTab == 1)
+            {
+                SDL_SetRenderTarget(renderer, nullptr);
+                renderInlineCostumesPanel(renderer, font, &inlineCos, &charMgr,
+                                          mouseX, mouseY, mouseClicked);
+                msx(100, isSprite);
+            }
+            else
+            {
+                working->copy();
+                const int tabX = (currentTab == 2) ? 200 : 0;
+                msx(tabX, isSprite);
+            }
         }
 
-        if (change_e)
-        {
-            SDL_RenderCopy(renderer, run, nullptr, &ruc);
-            change_e = false;
-        }
 
         SDL_RenderSetClipRect(renderer, &stageClip);
-        renderBackground(&bgState, stageClip);
+        renderBackground( &bgState, stageClip);
         renderAllCharacters(&charMgr);
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+        SDL_RenderCopy(renderer, run, nullptr, &stageClip);
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+        {
+            int activeIdx = charMgr.activeIndex;
+            const codtxs* activeCod = (activeIdx >= 0 && activeIdx < (int)spco[0].size())
+                                      ? &spco[0][activeIdx] : nullptr;
+            renderVarMonitors(activeCod, activeIdx);
+        }
         SDL_RenderSetClipRect(renderer, nullptr);
+        if (g_askActive)
+            renderAskPrompt(font, WINDOW_W, WINDOW_H, mouseClicked);
 
         SDL_SetRenderDrawColor(renderer, 60, 60, 80, 255);
         SDL_RenderDrawRect(renderer, &stageBorder);
@@ -865,6 +928,7 @@ int main(int argc, char* argv[])
         SDL_RenderPresent(renderer);
     }
     destroyCostumesMenu(&costumesMenu);
+    destroyInlineCostumes(&inlineCos);
     destroyAllCostumes();
 
     for (auto t : tex) SDL_DestroyTexture(t);
