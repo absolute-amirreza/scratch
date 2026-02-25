@@ -58,4 +58,19 @@ int msx(SDL_Renderer*renderer,int x,bool cb){
     if(x<=143)return 1;
     return 2;
 }
+void drawmm(bool cb)
+{
+    SDL_SetRenderDrawColor(renderer, 148, 187, 235, 255);
+    SDL_RenderClear(renderer);
+    bcl(0, 0, wt, 40, 0xffff780a);
+    textRGBA(renderer, 0,   7, "SCRATCH", "tahomabd.ttf", 22, 0, 0, 0, 255);
+    textRGBA(renderer, 130,10, "File",    "tahomabd.ttf", 18, 0, 0, 0, 255);
+
+    // ? button
+    bcl(155, 6, 178, 32, 0xff1a6adb);
+    textRGBA(renderer, 160, 9, "?", "tahomabd.ttf", 16, 255, 255, 255, 255);
+
+    bcl(wt - 535, 45, wt - 505, 75, 0xff00ff00);
+    bcl(wt - 570, 45, wt - 540, 75, 0xff0000ff);
+}
 #endif
